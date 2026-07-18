@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getSujetByNumber, sujetToTasks, encodeTopicNumber } from '../services/sujetsService'
-import { saveDraft, getEeSubmission, submitForEvaluation } from '../services/eeService'
+import { saveDraft, getEeSubmission, submitForEvaluation, retakeSujet } from '../services/eeService'
 import { markDayModule, getActiveDay } from '../services/progressService'
 import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AccentPalette from '../components/ee/AccentPalette'
@@ -29,6 +29,8 @@ export default function EESujetWorkspace() {
   const [phase, setPhase] = useState('writing') // 'writing' | 'results' | 'closed-empty'
   const [expired, setExpired] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
+  const [retaking, setRetaking] = useState(false)
+  const [previousScores, setPreviousScores] = useState({}) // step -> score before the current retake, for the improvement comparison
 
   const textareaRef = useRef(null)
   const dirtyRef = useRef(false)
@@ -38,6 +40,7 @@ export default function EESujetWorkspace() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setPreviousScores({})
     try {
       const sujetData = await getSujetByNumber(sujetNumber)
       if (!sujetData) {
@@ -208,6 +211,39 @@ export default function EESujetWorkspace() {
     if (phase === 'writing') handleSubmitAll(true)
   }
 
+  async function handleRetake() {
+    if (retaking) return
+    setRetaking(true)
+    try {
+      const topicNumbers = tasks.map((t) => encodeTopicNumber(sujetNumber, t.taskType))
+      // Keep the scores just obtained so we can show an improvement
+      // comparison once the student finishes the new attempt.
+      const scoresBeforeRetake = {}
+      tasks.forEach((_, i) => {
+        if (typeof feedbacks[i]?.estimated_score === 'number') scoresBeforeRetake[i] = feedbacks[i].estimated_score
+      })
+      setPreviousScores(scoresBeforeRetake)
+
+      await retakeSujet(user.id, topicNumbers)
+      clearExamTimer(timerKey)
+
+      setTexts({})
+      setSubmittedTexts({})
+      setSubmissionIds({})
+      setFeedbacks({})
+      setExpired(false)
+      setHasStarted(false)
+      setStep(0)
+      setPhase('writing')
+      submitLockRef.current = false
+      toast.success('Sujet réinitialisé — bonne chance pour cette nouvelle tentative !')
+    } catch (err) {
+      toast.error(err.message || 'Impossible de réinitialiser ce sujet')
+    } finally {
+      setRetaking(false)
+    }
+  }
+
   if (loading) return <div className="h-96 animate-pulse rounded-xl2 bg-slate-200 dark:bg-slate-800" />
 
   if (!sujet) {
@@ -240,6 +276,21 @@ export default function EESujetWorkspace() {
             <h3 className="flex items-center gap-2 text-sm font-bold">
               {feedbacks[i] && <CheckCircle2 size={16} className="text-emerald-500" />}
               {t.taskLabel}
+              {feedbacks[i] && typeof previousScores[i] === 'number' && (
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    feedbacks[i].estimated_score > previousScores[i]
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      : feedbacks[i].estimated_score < previousScores[i]
+                      ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                  }`}
+                >
+                  {previousScores[i]}/20 → {feedbacks[i].estimated_score}/20
+                  {feedbacks[i].estimated_score > previousScores[i] && ' 📈'}
+                  {feedbacks[i].estimated_score < previousScores[i] && ' 📉'}
+                </span>
+              )}
             </h3>
             {feedbacks[i] ? (
               <AiFeedbackPanel feedback={feedbacks[i]} submittedText={submittedTexts[i]} />
@@ -249,7 +300,13 @@ export default function EESujetWorkspace() {
           </div>
         ))}
 
-        <button onClick={() => navigate('/ee')} className="btn-primary">Retour aux sujets EE</button>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => navigate('/ee')} className="btn-primary">Retour aux sujets EE</button>
+          <button onClick={handleRetake} disabled={retaking} className="btn-outline">
+            {retaking ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+            Refaire ce sujet
+          </button>
+        </div>
       </div>
     )
   }

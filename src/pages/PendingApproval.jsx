@@ -1,10 +1,24 @@
+import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Clock3, LogOut, GraduationCap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import { notifyAdminNewSignup } from '../services/notifyService'
+
+const FRESH_SIGNUP_WINDOW_MS = 5 * 60 * 1000 // only notify if the account was created in the last 5 minutes
 
 export default function PendingApproval() {
-  const { isAuthenticated, isPending, isSuspended, signOut, user } = useAuth()
+  const { isAuthenticated, isPending, isSuspended, signOut, user, profile } = useAuth()
+  const notifiedRef = useRef(false)
+
+  useEffect(() => {
+    if (!isPending || !profile?.created_at || notifiedRef.current) return
+    const ageMs = Date.now() - new Date(profile.created_at).getTime()
+    if (ageMs < FRESH_SIGNUP_WINDOW_MS) {
+      notifiedRef.current = true
+      notifyAdminNewSignup({ fullName: profile.full_name, email: profile.email || user?.email })
+    }
+  }, [isPending, profile, user])
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
   if (isSuspended) return <Navigate to="/suspended" replace />

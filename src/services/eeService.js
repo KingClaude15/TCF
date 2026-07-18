@@ -63,3 +63,16 @@ export function computeAverageEeScore(submissions) {
   if (!scored.length) return null
   return Number((scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1))
 }
+
+/**
+ * Wipes a sujet's submissions (all 3 tâches) so the student can retake it.
+ * ai_feedback rows are removed automatically via ON DELETE CASCADE.
+ */
+export async function retakeSujet(userId, topicNumbers) {
+  const { error } = await supabase
+    .from('ee_submissions')
+    .delete()
+    .eq('user_id', userId)
+    .in('topic_number', topicNumbers)
+  if (error) throw error
+}
