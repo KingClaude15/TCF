@@ -17,7 +17,10 @@ export async function listAllActivity() {
     listAllUsers(),
     supabase.from('co_results').select('*').order('created_at', { ascending: false }),
     supabase.from('ce_results').select('*').order('created_at', { ascending: false }),
-    supabase.from('ee_submissions').select('*, ai_feedback(*)').order('created_at', { ascending: false }),
+    supabase
+      .from('ee_submissions')
+      .select('*, ai_feedback(*)')
+      .order('created_at', { ascending: false }),
   ])
   if (coRes.error) throw coRes.error
   if (ceRes.error) throw ceRes.error
@@ -69,6 +72,10 @@ export async function listAllActivity() {
         scoreLabel: `${fb.estimated_score}/20 (${fb.cefr_level ?? '—'})`,
         difficulty: null,
         date: s.submitted_at || fb.created_at,
+        prompt: s.prompt,
+        essay: s.final_content || s.draft_content,
+        wordCount: s.word_count,
+        feedback: fb,
       }
     })
 

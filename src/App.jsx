@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
@@ -5,30 +6,42 @@ import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminRoute from './components/layout/AdminRoute'
 import AppLayout from './components/layout/AppLayout'
 
+// Login is needed immediately (it's usually the first screen), so it stays
+// a normal import. Everything else loads on demand, split per route, so the
+// first paint only ships the code the visitor actually needs right now.
 import Login from './pages/Login'
-import Signup from './pages/Signup'
-import PendingApproval from './pages/PendingApproval'
-import SuspendedAccount from './pages/SuspendedAccount'
-import Dashboard from './pages/Dashboard'
-import ChallengeCalendar from './pages/ChallengeCalendar'
-import CO from './pages/CO'
-import COQuiz from './pages/COQuiz'
-import CE from './pages/CE'
-import CEQuiz from './pages/CEQuiz'
-import EE from './pages/EE'
-import EESujetWorkspace from './pages/EESujetWorkspace'
-import LearningCenter from './pages/LearningCenter'
-import ProgressCoach from './pages/ProgressCoach'
-import Statistics from './pages/Statistics'
-import Recommendations from './pages/Recommendations'
-import Profile from './pages/Profile'
-import AdminHome from './pages/admin/AdminHome'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminActivity from './pages/admin/AdminActivity'
-import AdminSujets from './pages/admin/AdminSujets'
-import AdminCO from './pages/admin/AdminCO'
-import AdminCE from './pages/admin/AdminCE'
-import NotFound from './pages/NotFound'
+
+const Signup = lazy(() => import('./pages/Signup'))
+const PendingApproval = lazy(() => import('./pages/PendingApproval'))
+const SuspendedAccount = lazy(() => import('./pages/SuspendedAccount'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ChallengeCalendar = lazy(() => import('./pages/ChallengeCalendar'))
+const CO = lazy(() => import('./pages/CO'))
+const COQuiz = lazy(() => import('./pages/COQuiz'))
+const CE = lazy(() => import('./pages/CE'))
+const CEQuiz = lazy(() => import('./pages/CEQuiz'))
+const EE = lazy(() => import('./pages/EE'))
+const EESujetWorkspace = lazy(() => import('./pages/EESujetWorkspace'))
+const LearningCenter = lazy(() => import('./pages/LearningCenter'))
+const ProgressCoach = lazy(() => import('./pages/ProgressCoach'))
+const Statistics = lazy(() => import('./pages/Statistics'))
+const Recommendations = lazy(() => import('./pages/Recommendations'))
+const Profile = lazy(() => import('./pages/Profile'))
+const AdminHome = lazy(() => import('./pages/admin/AdminHome'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminActivity = lazy(() => import('./pages/admin/AdminActivity'))
+const AdminSujets = lazy(() => import('./pages/admin/AdminSujets'))
+const AdminCO = lazy(() => import('./pages/admin/AdminCO'))
+const AdminCE = lazy(() => import('./pages/admin/AdminCE'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+
+function PageLoader() {
+  return (
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
+    </div>
+  )
+}
 
 export default function App() {
   const { loading } = useAuth()
@@ -44,6 +57,7 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -82,6 +96,7 @@ export default function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </>
   )
 }

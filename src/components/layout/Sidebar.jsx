@@ -117,7 +117,7 @@ export default function Sidebar({ open, onClose }) {
 
         <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
           <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand-50 to-transparent px-3 py-2.5 text-xs font-semibold text-brand-700 dark:from-brand-950/40 dark:text-brand-300">
-            <span aria-hidden="true">🇨🇦</span> Objectif TCF Canada
+            <span aria-hidden="true">🇨🇦</span> Challenge TCF Canada
           </div>
         </div>
       </aside>
