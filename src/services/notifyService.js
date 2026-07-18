@@ -1,31 +1,17 @@
-// Sends the admin an email whenever a new account is created, using
-// FormSubmit (https://formsubmit.co) — a free service that emails whoever
-// owns the target address when you POST to its endpoint. No backend or API
-// key needed.
-//
-// IMPORTANT (one-time step): the first time an email is ever sent to
-// ADMIN_NOTIFY_EMAIL this way, FormSubmit sends THAT address a confirmation
-// email with an "Activate Form" link. Nothing will arrive for real signups
-// until that link is clicked once.
+import { supabase } from '../lib/supabaseClient'
 
-const ADMIN_NOTIFY_EMAIL = 'fankyjoe216@gmail.com'
-
+// Notifies the admin of a new signup via the notify-signup Supabase Edge
+// Function (which sends the email server-side through Resend). This never
+// blocks signup — a failure here is logged but swallowed.
 export async function notifyAdminNewSignup({ fullName, email }) {
   try {
-    await fetch(`https://formsubmit.co/ajax/${ADMIN_NOTIFY_EMAIL}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        _subject: 'TCF 41-Day Challenge — nouvelle inscription à approuver',
-        Nom: fullName || '—',
-        Email: email,
-        Message: `${fullName || 'Un nouvel utilisateur'} (${email}) vient de créer un compte et attend ton approbation dans le panneau admin.`,
-      }),
+    const { data, error } = await supabase.functions.invoke('notify-signup', {
+      body: { fullName, email },
     })
-  } catch {
-    // Best-effort notification — a failure here should never block signup.
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
+    console.log('[notifyAdminNewSignup] sent', data)
+  } catch (err) {
+    console.error('[notifyAdminNewSignup] failed', err)
   }
 }
