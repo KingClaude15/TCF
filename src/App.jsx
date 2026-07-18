@@ -1,7 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminRoute from './components/layout/AdminRoute'
 import AppLayout from './components/layout/AppLayout'
@@ -44,16 +43,6 @@ function PageLoader() {
 }
 
 export default function App() {
-  const { loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surface dark:bg-surface-dark">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
-      </div>
-    )
-  }
-
   return (
     <>
       <Toaster position="top-right" toastOptions={{ duration: 3500 }} />

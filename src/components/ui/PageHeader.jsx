@@ -16,6 +16,9 @@ export default function PageHeader({ icon: Icon, eyebrow, title, subtitle, accen
           src={image}
           alt=""
           aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          fetchpriority="low"
           onError={(e) => { e.currentTarget.style.display = 'none' }}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-luminosity"
         />

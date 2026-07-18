@@ -32,9 +32,11 @@ export default function Dashboard() {
       {/* Continue today's challenge — hero banner */}
       <div className="page-hero bg-gradient-to-br from-brand-600 via-brand-700 to-ink-900 p-6 sm:p-8">
         <img
-          src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=1400&q=80"
+          src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=900&q=60"
           alt=""
           aria-hidden="true"
+          decoding="async"
+          fetchpriority="low"
           onError={(e) => { e.currentTarget.style.display = 'none' }}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15 mix-blend-luminosity"
         />

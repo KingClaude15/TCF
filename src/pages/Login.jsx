@@ -131,9 +131,11 @@ export function AuthShowcase() {
   return (
     <div className="relative hidden overflow-hidden bg-ink-900 lg:flex lg:flex-col lg:justify-between lg:p-12">
       <img
-        src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1400&q=80"
+        src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=60"
         alt=""
         aria-hidden="true"
+        decoding="async"
+        fetchpriority="low"
         onError={(e) => { e.currentTarget.style.display = 'none' }}
         className="absolute inset-0 h-full w-full object-cover opacity-35"
       />
