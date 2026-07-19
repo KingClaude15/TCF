@@ -165,24 +165,24 @@ export function eoSujetToTasks(sujet) {
   return [
     {
       taskType: 1,
-      taskLabel: 'Tâche 1 — Entretien',
+      taskLabel: 'Tâche 1 — Entretien dirigé',
       prompt: sujet.tache1_prompt,
-      maxSeconds: sujet.tache1_max_seconds ?? 60,
+      prepSeconds: 0, // sans préparation
+      maxSeconds: sujet.tache1_max_seconds ?? 120,
     },
     {
       taskType: 2,
-      taskLabel: 'Tâche 2 — Récit / description',
+      taskLabel: 'Tâche 2 — Poser des questions',
       prompt: sujet.tache2_prompt,
-      maxSeconds: sujet.tache2_max_seconds ?? 120,
+      prepSeconds: sujet.tache2_prep_seconds ?? 120, // avec préparation — le temps de noter ses questions
+      maxSeconds: sujet.tache2_max_seconds ?? 150,
     },
     {
       taskType: 3,
-      taskLabel: 'Tâche 3 — Prise de position',
-      prompt:
-        `${sujet.tache3_theme} : donnez votre avis à l'oral.\n\n` +
-        `Vous pouvez vous appuyer sur ces deux points de vue :\n\n` +
-        `Point de vue 1 : ${sujet.tache3_doc1}\n\nPoint de vue 2 : ${sujet.tache3_doc2}`,
-      maxSeconds: sujet.tache3_max_seconds ?? 180,
+      taskLabel: 'Tâche 3 — Point de vue',
+      prompt: sujet.tache3_topic,
+      prepSeconds: sujet.tache3_prep_seconds ?? 0, // sans préparation
+      maxSeconds: sujet.tache3_max_seconds ?? 270,
     },
   ]
 }

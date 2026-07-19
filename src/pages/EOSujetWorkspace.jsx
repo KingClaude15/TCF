@@ -31,6 +31,9 @@ export default function EOSujetWorkspace() {
   const [hasStarted, setHasStarted] = useState(false)
   const [retaking, setRetaking] = useState(false)
   const [previousScores, setPreviousScores] = useState({})
+  const [prepDone, setPrepDone] = useState(new Set()) // steps whose prep countdown has finished/been skipped
+  const [prepRemaining, setPrepRemaining] = useState(0)
+  const [notes, setNotes] = useState({}) // step -> scratch notes typed during prep (local only, never submitted)
 
   const timerKey = user ? `eo_timer_sujet_${user.id}_${sujetNumber}` : null
 
@@ -71,6 +74,8 @@ export default function EOSujetWorkspace() {
         setPhase('recording')
       }
       setHasStarted(false)
+      setPrepDone(new Set())
+      setPrepRemaining(0)
       if (timerKey) clearExamTimer(timerKey)
     } finally {
       setLoading(false)
@@ -82,7 +87,36 @@ export default function EOSujetWorkspace() {
   }, [load])
 
   const task = tasks[step]
-  const examDurationSeconds = tasks.reduce((sum, t) => sum + (t.maxSeconds || 0), 0) || 12 * 60
+  const examDurationSeconds =
+    tasks.reduce((sum, t) => sum + (t.maxSeconds || 0) + (t.prepSeconds || 0), 0) || 12 * 60
+  const inPrep = task && task.prepSeconds > 0 && !prepDone.has(step)
+
+  // Starts (or restarts) the prep countdown whenever the student lands on a
+  // task that requires preparation and hasn't finished prepping it yet.
+  useEffect(() => {
+    if (!inPrep) return
+    setPrepRemaining(task.prepSeconds)
+    const interval = setInterval(() => {
+      setPrepRemaining((s) => {
+        if (s <= 1) {
+          clearInterval(interval)
+          setPrepDone((d) => new Set(d).add(step))
+          return 0
+        }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, inPrep])
+
+  function skipPrep() {
+    setPrepDone((d) => new Set(d).add(step))
+  }
+
+  useEffect(() => {
+    if (phase === 'recording' && sujet) setHasStarted(true)
+  }, [phase, sujet])
 
   function handleRecorded(blob, durationSeconds) {
     setRecordings((r) => ({ ...r, [step]: { blob, durationSeconds } }))
@@ -166,6 +200,8 @@ export default function EOSujetWorkspace() {
       setFeedbacks({})
       setExpired(false)
       setHasStarted(false)
+      setPrepDone(new Set())
+      setPrepRemaining(0)
       setStep(0)
       setPhase('recording')
       toast.success('Sujet réinitialisé — bonne chance pour cette nouvelle tentative !')
@@ -287,7 +323,8 @@ export default function EOSujetWorkspace() {
         </span>
         <h2 className="mt-1 whitespace-pre-line text-base font-bold leading-snug">{task.prompt}</h2>
         <p className="mt-1 text-xs text-slate-400">
-          Durée attendue : jusqu'à {Math.round(task.maxSeconds / 60) || 1} min
+          {task.prepSeconds > 0 ? `Préparation : ${Math.round(task.prepSeconds / 60)} min · ` : ''}
+          Durée de parole : jusqu'à {Math.round(task.maxSeconds / 60) || 1} min
         </p>
       </div>
 
@@ -295,8 +332,28 @@ export default function EOSujetWorkspace() {
         <div className="card border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
           Cette tâche a déjà été soumise et évaluée. Utilise "Refaire ce sujet" depuis les résultats pour recommencer.
         </div>
+      ) : inPrep ? (
+        <div className="card flex flex-col items-center gap-4 p-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 text-2xl font-bold tabular-nums text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            {Math.floor(prepRemaining / 60)}:{String(prepRemaining % 60).padStart(2, '0')}
+          </div>
+          <p className="text-center text-sm font-semibold text-amber-600 dark:text-amber-400">
+            Temps de préparation — note tes questions ci-dessous, l'enregistrement démarrera automatiquement
+          </p>
+          <textarea
+            value={notes[step] || ''}
+            onChange={(e) => setNotes((n) => ({ ...n, [step]: e.target.value }))}
+            rows={5}
+            placeholder="Brouillon (non évalué) — note ici les questions que tu vas poser..."
+            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm focus:outline-none dark:border-slate-700 dark:bg-slate-800/50"
+          />
+          <button onClick={skipPrep} className="text-xs font-semibold text-slate-500 hover:text-brand-600">
+            Passer à l'enregistrement maintenant →
+          </button>
+        </div>
       ) : (
         <AudioRecorder
+          key={step}
           maxSeconds={task.maxSeconds}
           disabled={submittingAll}
           onRecorded={handleRecorded}
