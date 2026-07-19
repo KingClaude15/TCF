@@ -70,6 +70,40 @@ Retourne UNIQUEMENT un objet JSON valide (aucun texte avant/après, aucun markdo
 estimated_score est sur 20, aligné sur le barème officiel TCF Canada EO. Sois précis, technique, et exigeant — pas complaisant. Si l'audio est vide, inaudible, ou ne contient aucune réponse pertinente au sujet, mets estimated_score à 0 et explique pourquoi dans task_achievement equivalent (utilise coherence_feedback pour ce cas).`
 }
 
+// Passed as generationConfig.responseSchema so Gemini's structured-output
+// mode generates already-valid JSON (including correct escaping of
+// newlines/quotes inside transcript text) instead of us hoping a
+// free-form "return JSON" instruction produces parseable output. This is
+// what actually fixes the "Expected ',' or '}' ... in JSON" crashes: those
+// happened because natural speech transcripts routinely contain quote
+// marks, apostrophes, and paragraph-like pauses that responseMimeType
+// alone does not guarantee are escaped correctly.
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    transcript: { type: 'STRING' },
+    cefr_level: { type: 'STRING' },
+    estimated_score: { type: 'NUMBER' },
+    fluency_feedback: { type: 'STRING' },
+    pronunciation_feedback: { type: 'STRING' },
+    grammar_feedback: { type: 'STRING' },
+    vocabulary_feedback: { type: 'STRING' },
+    coherence_feedback: { type: 'STRING' },
+    recommendations: { type: 'STRING' },
+  },
+  required: [
+    'transcript',
+    'cefr_level',
+    'estimated_score',
+    'fluency_feedback',
+    'pronunciation_feedback',
+    'grammar_feedback',
+    'vocabulary_feedback',
+    'coherence_feedback',
+    'recommendations',
+  ],
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -134,6 +168,7 @@ serve(async (req) => {
           generationConfig: {
             temperature: 0.3,
             responseMimeType: 'application/json',
+            responseSchema: RESPONSE_SCHEMA,
           },
         }),
       }
@@ -149,7 +184,16 @@ serve(async (req) => {
     const completion = await geminiRes.json()
     const rawText = completion.candidates?.[0]?.content?.parts?.[0]?.text
     if (!rawText) throw new Error('Gemini returned no content: ' + JSON.stringify(completion))
-    const parsed = JSON.parse(rawText)
+    let parsed
+    try {
+      parsed = JSON.parse(rawText)
+    } catch (parseErr) {
+      // Surface a snippet rather than the full transcript (which can be
+      // long) so this is actually readable in the function logs.
+      throw new Error(
+        `Gemini response was not valid JSON despite responseSchema (${parseErr.message}). First 300 chars: ${rawText.slice(0, 300)}`
+      )
+    }
 
     const admin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

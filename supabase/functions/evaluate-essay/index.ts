@@ -93,6 +93,65 @@ Retourne UNIQUEMENT un objet JSON valide (aucun texte avant/après, aucun markdo
 estimated_score est sur 20, aligné sur le barème officiel TCF Canada EE. Sois précis, technique, et exigeant — pas complaisant.`
 }
 
+// See evaluate-eo/index.ts for why this is necessary: responseMimeType
+// alone doesn't guarantee Gemini escapes quotes/newlines correctly inside
+// long free-text fields (corrected_version, model_answer, mistakes[].*).
+// responseSchema switches Gemini into structured-output mode, which is
+// far more reliable than hoping a prompt instruction produces parseable
+// JSON on every call.
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    cefr_level: { type: 'STRING' },
+    estimated_score: { type: 'NUMBER' },
+    grammar_feedback: { type: 'STRING' },
+    vocabulary_feedback: { type: 'STRING' },
+    organization_feedback: { type: 'STRING' },
+    task_achievement_feedback: { type: 'STRING' },
+    mistakes: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          original: { type: 'STRING' },
+          correction: { type: 'STRING' },
+          explanation: { type: 'STRING' },
+          category: { type: 'STRING' },
+        },
+        required: ['original', 'correction', 'explanation', 'category'],
+      },
+    },
+    corrected_version: { type: 'STRING' },
+    model_answer: { type: 'STRING' },
+    vocabulary_suggestions: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          basic: { type: 'STRING' },
+          advanced: { type: 'STRING' },
+          context: { type: 'STRING' },
+        },
+        required: ['basic', 'advanced', 'context'],
+      },
+    },
+    recommendations: { type: 'STRING' },
+  },
+  required: [
+    'cefr_level',
+    'estimated_score',
+    'grammar_feedback',
+    'vocabulary_feedback',
+    'organization_feedback',
+    'task_achievement_feedback',
+    'mistakes',
+    'corrected_version',
+    'model_answer',
+    'vocabulary_suggestions',
+    'recommendations',
+  ],
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -153,6 +212,7 @@ serve(async (req) => {
           generationConfig: {
             temperature: 0.3,
             responseMimeType: 'application/json',
+            responseSchema: RESPONSE_SCHEMA,
           },
         }),
       }
@@ -168,7 +228,14 @@ serve(async (req) => {
     const completion = await geminiRes.json()
     const rawText = completion.candidates?.[0]?.content?.parts?.[0]?.text
     if (!rawText) throw new Error('Gemini returned no content: ' + JSON.stringify(completion))
-    const parsed = JSON.parse(rawText)
+    let parsed
+    try {
+      parsed = JSON.parse(rawText)
+    } catch (parseErr) {
+      throw new Error(
+        `Gemini response was not valid JSON despite responseSchema (${parseErr.message}). First 300 chars: ${rawText.slice(0, 300)}`
+      )
+    }
 
     // Persist feedback with the service role (bypasses RLS, but we already
     // verified the caller owns this user_id above).
