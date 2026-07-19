@@ -54,7 +54,7 @@ export default function CE() {
         title="Compréhension Écrite"
         subtitle="Séries de lecture avec correction automatique, calibrées sur la difficulté du TCF Canada."
         accent="ce"
-        image="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

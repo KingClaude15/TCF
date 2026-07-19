@@ -168,21 +168,21 @@ export function eoSujetToTasks(sujet) {
       taskLabel: 'Tâche 1 — Entretien dirigé',
       prompt: sujet.tache1_prompt,
       prepSeconds: 0, // sans préparation
-      maxSeconds: sujet.tache1_max_seconds ?? 120,
+      maxSeconds: sujet.tache1_max_seconds ?? 120, // 2 min
     },
     {
       taskType: 2,
       taskLabel: 'Tâche 2 — Poser des questions',
       prompt: sujet.tache2_prompt,
-      prepSeconds: sujet.tache2_prep_seconds ?? 120, // avec préparation — le temps de noter ses questions
-      maxSeconds: sujet.tache2_max_seconds ?? 150,
+      prepSeconds: sujet.tache2_prep_seconds ?? 120, // ≈2 min de préparation
+      maxSeconds: sujet.tache2_max_seconds ?? 210, // ≈3 min 30 s de parole (total tâche : 5 min 30 s)
     },
     {
       taskType: 3,
       taskLabel: 'Tâche 3 — Point de vue',
       prompt: sujet.tache3_topic,
       prepSeconds: sujet.tache3_prep_seconds ?? 0, // sans préparation
-      maxSeconds: sujet.tache3_max_seconds ?? 270,
+      maxSeconds: sujet.tache3_max_seconds ?? 270, // 4 min 30 s
     },
   ]
 }

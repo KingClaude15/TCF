@@ -46,7 +46,7 @@ export default function EE() {
         title="Expression Écrite"
         subtitle="Chaque sujet contient les Tâches 1, 2 et 3 — comme à l'examen réel — avec correction IA détaillée."
         accent="ee"
-        image="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

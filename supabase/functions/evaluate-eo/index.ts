@@ -16,12 +16,12 @@ const corsHeaders = {
 }
 
 const TASK_RULES: Record<number, string> = {
-  1: `TÂCHE 1 — Entretien / présentation informelle (réponse courte, ~30-60 secondes attendues).
+  1: `TÂCHE 1 — Entretien dirigé, SANS préparation (~2 minutes attendues).
 Le candidat doit se présenter ou répondre à une question simple avec des phrases complètes, un ton naturel et une prononciation compréhensible. À ce niveau, on évalue surtout l'aisance de base, la clarté, et la capacité à parler sans trop d'hésitations sur un sujet familier.`,
-  2: `TÂCHE 2 — Récit / description (~1-2 minutes attendues).
-Le candidat doit raconter une expérience ou décrire une situation de façon organisée (introduction, déroulement chronologique ou logique, conclusion), avec des connecteurs (d'abord, ensuite, enfin) et suffisamment de détails concrets. Le débit doit rester fluide, sans blancs prolongés.`,
-  3: `TÂCHE 3 — Prise de position / débat (~2-3 minutes attendues).
-Le candidat doit réagir à deux points de vue opposés puis défendre une position personnelle claire, avec au moins un argument développé (affirmation + explication + exemple) et une structure audible (introduction, développement, conclusion). C'est la tâche la plus exigeante : vérifier la précision du vocabulaire abstrait/argumentatif et la fluidité sur une durée plus longue.`,
+  2: `TÂCHE 2 — Poser des questions pour obtenir des informations, AVEC 2 minutes de préparation avant de parler (~2-3 minutes de parole attendues).
+Le candidat a préparé une série de questions sur la situation donnée (ex : louer un appartement, s'inscrire à un cours) et doit maintenant les POSER À VOIX HAUTE de façon hiérarchisée — des questions générales vers les plus précises. Évalue : la pertinence et la précision des questions posées par rapport à la situation, leur nombre (idéalement 8-10+), leur formulation grammaticalement correcte (inversion, est-ce que, intonation interrogative), et une progression logique. Ce n'est PAS un récit ni une réponse à une question — c'est le candidat qui doit interroger. Si le candidat raconte une histoire au lieu de poser des questions, c'est un manquement grave à signaler.`,
+  3: `TÂCHE 3 — Expression d'un point de vue sur UN SEUL sujet, SANS préparation (~3-4 minutes attendues).
+Le candidat doit réagir immédiatement et spontanément à la question/affirmation donnée, avec une position personnelle claire, structurée (introduction, au moins un argument développé avec explication et exemple, conclusion), et des connecteurs logiques (En effet, De plus, Cependant, En conclusion). Contrairement à l'EE tâche 3, il n'y a PAS deux points de vue opposés à présenter — seulement l'opinion personnelle du candidat sur le sujet posé.`,
 }
 
 // Official EE/EO (/20 scale) → CECR level — see evaluate-essay/index.ts for sourcing notes.
@@ -96,7 +96,16 @@ serve(async (req) => {
     const audioRes = await fetch(audioUrl)
     if (!audioRes.ok) throw new Error(`Could not fetch audio recording (status ${audioRes.status})`)
     const audioBuffer = await audioRes.arrayBuffer()
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+    const audioBytes = new Uint8Array(audioBuffer)
+    // Chunked conversion — spreading a large typed array directly into
+    // String.fromCharCode(...bytes) blows the call stack for anything
+    // beyond a very short clip, which was crashing every real submission.
+    let binary = ''
+    const CHUNK_SIZE = 8192
+    for (let i = 0; i < audioBytes.length; i += CHUNK_SIZE) {
+      binary += String.fromCharCode(...audioBytes.subarray(i, i + CHUNK_SIZE))
+    }
+    const audioBase64 = btoa(binary)
     const mimeType = audioRes.headers.get('content-type') || 'audio/webm'
 
     console.log('evaluate-eo: audio fetched, bytes=', audioBuffer.byteLength, 'taskType=', taskType)

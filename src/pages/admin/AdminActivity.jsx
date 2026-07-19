@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Loader2, Search, Headphones, BookOpen, PenLine, RefreshCcw, Eye } from 'lucide-react'
+import { Loader2, Search, Headphones, BookOpen, PenLine, Mic, RefreshCcw, Eye } from 'lucide-react'
 import clsx from 'clsx'
 import { listAllActivity } from '../../services/adminActivityService'
+import { supabase } from '../../lib/supabaseClient'
 import EmptyState from '../../components/ui/EmptyState'
 import Modal from '../../components/ui/Modal'
 
@@ -10,6 +11,7 @@ const MODULE_STYLES = {
   CO: { icon: Headphones, className: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' },
   CE: { icon: BookOpen, className: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300' },
   EE: { icon: PenLine, className: 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300' },
+  EO: { icon: Mic, className: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' },
 }
 
 const PAGE_SIZE = 25
@@ -23,6 +25,18 @@ export default function AdminActivity() {
   const [moduleFilter, setModuleFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [viewing, setViewing] = useState(null)
+  const [viewingAudioUrl, setViewingAudioUrl] = useState(null)
+
+  useEffect(() => {
+    if (viewing?.module === 'EO' && viewing.audioPath) {
+      supabase.storage
+        .from('eo-recordings')
+        .createSignedUrl(viewing.audioPath, 60 * 15)
+        .then(({ data }) => setViewingAudioUrl(data?.signedUrl || null))
+    } else {
+      setViewingAudioUrl(null)
+    }
+  }, [viewing])
 
   async function load() {
     setLoading(true)
@@ -138,7 +152,7 @@ export default function AdminActivity() {
 
         <div className="flex items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-slate-100 p-1 text-xs font-semibold dark:bg-slate-800">
-            {['all', 'CO', 'CE', 'EE'].map((m) => (
+            {['all', 'CO', 'CE', 'EE', 'EO'].map((m) => (
               <button
                 key={m}
                 onClick={() => setModuleFilter(m)}
@@ -204,6 +218,15 @@ export default function AdminActivity() {
                             <Eye size={14} /> Voir
                           </button>
                         )}
+                        {a.module === 'EO' && a.audioPath && (
+                          <button
+                            onClick={() => setViewing(a)}
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950"
+                            title="Écouter l'enregistrement"
+                          >
+                            <Eye size={14} /> Voir
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
@@ -220,7 +243,7 @@ export default function AdminActivity() {
         </>
       )}
 
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title="Copie EE" maxWidth="max-w-2xl">
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.module === 'EO' ? 'Copie EO' : 'Copie EE'} maxWidth="max-w-2xl">
         {viewing && (
           <div className="space-y-4 text-sm">
             <div>
@@ -235,46 +258,105 @@ export default function AdminActivity() {
               </p>
             </div>
 
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <p className="label mb-0">Réponse du candidat</p>
-                {viewing.wordCount != null && (
-                  <span className="text-xs text-slate-400">{viewing.wordCount} mots</span>
+            {viewing.module === 'EO' ? (
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="label mb-0">Enregistrement du candidat</p>
+                  {viewing.durationSeconds != null && (
+                    <span className="text-xs text-slate-400">{viewing.durationSeconds}s</span>
+                  )}
+                </div>
+                {viewingAudioUrl ? (
+                  <audio controls src={viewingAudioUrl} className="w-full" />
+                ) : (
+                  <p className="text-xs text-slate-400">Chargement de l'audio...</p>
                 )}
               </div>
-              <p className="whitespace-pre-wrap rounded-lg border border-slate-200 p-3 text-slate-700 dark:border-slate-700 dark:text-slate-200">
-                {viewing.essay}
-              </p>
-            </div>
+            ) : (
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="label mb-0">Réponse du candidat</p>
+                  {viewing.wordCount != null && (
+                    <span className="text-xs text-slate-400">{viewing.wordCount} mots</span>
+                  )}
+                </div>
+                <p className="whitespace-pre-wrap rounded-lg border border-slate-200 p-3 text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                  {viewing.essay}
+                </p>
+              </div>
+            )}
 
             {viewing.feedback && (
               <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                 <p className="label mb-0">
                   Score : {viewing.feedback.estimated_score}/20 ({viewing.feedback.cefr_level || '—'})
                 </p>
-                {viewing.feedback.task_achievement_feedback && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Adéquation à la tâche</p>
-                    <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.task_achievement_feedback}</p>
-                  </div>
-                )}
-                {viewing.feedback.organization_feedback && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Organisation</p>
-                    <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.organization_feedback}</p>
-                  </div>
-                )}
-                {viewing.feedback.grammar_feedback && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
-                    <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.grammar_feedback}</p>
-                  </div>
-                )}
-                {viewing.feedback.vocabulary_feedback && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
-                    <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.vocabulary_feedback}</p>
-                  </div>
+                {viewing.module === 'EO' ? (
+                  <>
+                    {viewing.feedback.transcript && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Transcription</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.transcript}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.fluency_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Aisance et fluidité</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.fluency_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.pronunciation_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Prononciation</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.pronunciation_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.grammar_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.grammar_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.vocabulary_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.vocabulary_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.coherence_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Cohérence du discours</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.coherence_feedback}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {viewing.feedback.task_achievement_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Adéquation à la tâche</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.task_achievement_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.organization_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Organisation</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.organization_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.grammar_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.grammar_feedback}</p>
+                      </div>
+                    )}
+                    {viewing.feedback.vocabulary_feedback && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
+                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.vocabulary_feedback}</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

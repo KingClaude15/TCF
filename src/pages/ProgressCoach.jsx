@@ -65,7 +65,7 @@ export default function ProgressCoach() {
         title="Coach de progression IA"
         subtitle="Détection de tendances sur plusieurs semaines et prédiction de ta préparation à l'examen."
         accent="brand"
-        image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=60"
       />
 
       {/* Headline readiness card */}

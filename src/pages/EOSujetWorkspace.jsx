@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { getEoSujetByNumber, eoSujetToTasks, encodeTopicNumber } from '../services/sujetsService'
-import { getEoSubmission, submitRecording, retakeEoSujet } from '../services/eoService'
+import { getEoSubmission, saveDraftRecording, submitRecording, retakeEoSujet } from '../services/eoService'
 import { markDayModule, getActiveDay } from '../services/progressService'
 import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AudioRecorder from '../components/eo/AudioRecorder'
@@ -23,7 +23,9 @@ export default function EOSujetWorkspace() {
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(0)
   const [recordings, setRecordings] = useState({}) // step -> { blob, durationSeconds }
-  const [existingAudioUrls, setExistingAudioUrls] = useState({}) // step -> signed URL (already-submitted attempt)
+  const [existingAudioUrls, setExistingAudioUrls] = useState({}) // step -> signed URL (already-uploaded draft or submitted attempt)
+  const [draftAudioPaths, setDraftAudioPaths] = useState({}) // step -> raw storage path, so a refresh can finalize without re-recording
+  const [savingDraft, setSavingDraft] = useState({}) // step -> boolean, brief "saving..." indicator
   const [feedbacks, setFeedbacks] = useState({})
   const [submittingAll, setSubmittingAll] = useState(false)
   const [phase, setPhase] = useState('recording') // 'recording' | 'results' | 'closed-empty'
@@ -36,10 +38,15 @@ export default function EOSujetWorkspace() {
   const [notes, setNotes] = useState({}) // step -> scratch notes typed during prep (local only, never submitted)
 
   const timerKey = user ? `eo_timer_sujet_${user.id}_${sujetNumber}` : null
+  const blobUrlCacheRef = useRef({}) // step -> object URL created from an in-memory blob, cached to avoid recreation/leaks
 
   const load = useCallback(async () => {
     setLoading(true)
     setPreviousScores({})
+    // Release any cached preview URLs from a previously-loaded sujet before
+    // fetching this one's data.
+    Object.values(blobUrlCacheRef.current).forEach((url) => URL.revokeObjectURL(url))
+    blobUrlCacheRef.current = {}
     try {
       const sujetData = await getEoSujetByNumber(sujetNumber)
       if (!sujetData) {
@@ -54,6 +61,7 @@ export default function EOSujetWorkspace() {
         taskList.map((t) => getEoSubmission(user.id, encodeTopicNumber(sujetNumber, t.taskType)))
       )
       const nextUrls = {}
+      const nextDraftPaths = {}
       const nextFeedback = {}
       for (let i = 0; i < existing.length; i++) {
         const sub = existing[i]
@@ -61,10 +69,12 @@ export default function EOSujetWorkspace() {
         if (sub.audio_path) {
           const { data } = await supabase.storage.from(BUCKET).createSignedUrl(sub.audio_path, 60 * 30)
           if (data) nextUrls[i] = data.signedUrl
+          nextDraftPaths[i] = sub.audio_path
         }
         if (sub.eo_feedback?.[0]) nextFeedback[i] = sub.eo_feedback[0]
       }
       setExistingAudioUrls(nextUrls)
+      setDraftAudioPaths(nextDraftPaths)
       setFeedbacks(nextFeedback)
       setRecordings({})
 
@@ -121,7 +131,55 @@ export default function EOSujetWorkspace() {
   function handleRecorded(blob, durationSeconds) {
     setRecordings((r) => ({ ...r, [step]: { blob, durationSeconds } }))
     setHasStarted(true)
+
+    // Persist immediately in the background — this is what makes the
+    // recording survive a page refresh. Recording locally in the UI never
+    // waits on this; it's fire-and-forget with a soft failure toast.
+    const currentStep = step
+    const currentTask = tasks[currentStep]
+    if (!currentTask) return
+    setSavingDraft((s) => ({ ...s, [currentStep]: true }))
+    ;(async () => {
+      try {
+        const dayNumber = await getActiveDay(user.id)
+        const saved = await saveDraftRecording({
+          userId: user.id,
+          topicNumber: encodeTopicNumber(sujetNumber, currentTask.taskType),
+          prompt: currentTask.prompt,
+          dayNumber,
+          audioBlob: blob,
+          durationSeconds,
+        })
+        setDraftAudioPaths((p) => ({ ...p, [currentStep]: saved.audio_path }))
+      } catch (err) {
+        toast.error(`Échec de la sauvegarde automatique (${currentTask.taskLabel}) — réessaie si tu rafraîchis la page.`)
+      } finally {
+        setSavingDraft((s) => ({ ...s, [currentStep]: false }))
+      }
+    })()
   }
+
+  // The preview URL AudioRecorder should show for the *current* step:
+  // prefer the in-memory blob just recorded this session (cached to avoid
+  // recreating object URLs on every render), otherwise fall back to a
+  // previously-uploaded draft/submission fetched from storage.
+  function getExistingUrlForStep(stepIndex) {
+    const rec = recordings[stepIndex]
+    if (rec?.blob) {
+      if (!blobUrlCacheRef.current[stepIndex]) {
+        blobUrlCacheRef.current[stepIndex] = URL.createObjectURL(rec.blob)
+      }
+      return blobUrlCacheRef.current[stepIndex]
+    }
+    return existingAudioUrls[stepIndex] || null
+  }
+
+  useEffect(() => {
+    const cache = blobUrlCacheRef.current
+    return () => {
+      Object.values(cache).forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [])
 
   const handleSubmitAll = useCallback(
     async (auto = false) => {
@@ -139,7 +197,8 @@ export default function EOSujetWorkspace() {
             anySubmitted = true
             continue // already evaluated in a previous sitting
           }
-          if (!rec?.blob) continue // nothing recorded for this tâche — skip it
+          const existingPath = draftAudioPaths[i]
+          if (!rec?.blob && !existingPath) continue // nothing recorded for this tâche — skip it
 
           const feedback = await submitRecording({
             userId: user.id,
@@ -147,11 +206,12 @@ export default function EOSujetWorkspace() {
             prompt: t.prompt,
             taskType: t.taskType,
             dayNumber,
-            audioBlob: rec.blob,
-            durationSeconds: rec.durationSeconds,
+            audioBlob: rec?.blob,
+            durationSeconds: rec?.durationSeconds,
+            existingAudioPath: rec?.blob ? undefined : existingPath,
           })
           nextFeedback[i] = feedback
-          nextUrls[i] = URL.createObjectURL(rec.blob)
+          if (rec?.blob) nextUrls[i] = URL.createObjectURL(rec.blob)
           anySubmitted = true
         }
 
@@ -173,7 +233,7 @@ export default function EOSujetWorkspace() {
         setSubmittingAll(false)
       }
     },
-    [tasks, recordings, feedbacks, existingAudioUrls, sujetNumber, timerKey, user]
+    [tasks, recordings, feedbacks, existingAudioUrls, draftAudioPaths, sujetNumber, timerKey, user]
   )
 
   function handleExpire() {
@@ -197,6 +257,9 @@ export default function EOSujetWorkspace() {
 
       setRecordings({})
       setExistingAudioUrls({})
+      setDraftAudioPaths({})
+      Object.values(blobUrlCacheRef.current).forEach((url) => URL.revokeObjectURL(url))
+      blobUrlCacheRef.current = {}
       setFeedbacks({})
       setExpired(false)
       setHasStarted(false)
@@ -306,7 +369,7 @@ export default function EOSujetWorkspace() {
             }`}
           >
             {t.taskLabel}
-            {(recordings[i]?.blob || feedbacks[i]) && <span className="ml-1 text-amber-500">●</span>}
+            {(recordings[i]?.blob || draftAudioPaths[i] || feedbacks[i]) && <span className="ml-1 text-amber-500">●</span>}
           </button>
         ))}
       </div>
@@ -352,13 +415,20 @@ export default function EOSujetWorkspace() {
           </button>
         </div>
       ) : (
-        <AudioRecorder
-          key={step}
-          maxSeconds={task.maxSeconds}
-          disabled={submittingAll}
-          onRecorded={handleRecorded}
-          existingUrl={null}
-        />
+        <>
+          {savingDraft[step] && (
+            <p className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Loader2 size={12} className="animate-spin" /> Sauvegarde automatique en cours...
+            </p>
+          )}
+          <AudioRecorder
+            key={step}
+            maxSeconds={task.maxSeconds}
+            disabled={submittingAll}
+            onRecorded={handleRecorded}
+            existingUrl={getExistingUrlForStep(step)}
+          />
+        </>
       )}
 
       <button onClick={() => handleSubmitAll(false)} disabled={submittingAll} className="btn-primary w-full">

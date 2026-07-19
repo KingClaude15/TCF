@@ -78,7 +78,7 @@ export default function LearningCenter() {
         title="Centre d'apprentissage"
         subtitle={`Généré à partir de ${evaluated.length} correction${evaluated.length > 1 ? 's' : ''} EE.`}
         accent="brand"
-        image="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="card flex items-start gap-3 border-l-4 border-l-gold-400 p-5">

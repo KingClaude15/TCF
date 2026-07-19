@@ -35,8 +35,38 @@ async function uploadRecording(userId, topicNumber, blob) {
 }
 
 /**
+ * Uploads a recording immediately after the student stops recording, as a
+ * 'draft' — before final submission/evaluation. This is what makes a
+ * recording survive a page refresh or switching tasks: the audio itself
+ * lives in Storage from the moment it's recorded, not just in memory.
+ */
+export async function saveDraftRecording({ userId, topicNumber, prompt, dayNumber, audioBlob, durationSeconds }) {
+  const audioPath = await uploadRecording(userId, topicNumber, audioBlob)
+  const { data, error } = await supabase
+    .from('eo_submissions')
+    .upsert(
+      {
+        user_id: userId,
+        topic_number: topicNumber,
+        prompt,
+        audio_path: audioPath,
+        duration_seconds: durationSeconds,
+        day_number: dayNumber,
+        status: 'draft',
+      },
+      { onConflict: 'user_id,topic_number' }
+    )
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
  * Saves the recording and immediately submits it for AI evaluation via the
  * `evaluate-eo` Edge Function, which transcribes + scores it server-side.
+ * If `existingAudioPath` is provided (a draft already uploaded earlier —
+ * e.g. before a page refresh), it's reused instead of re-uploading the blob.
  */
 export async function submitRecording({
   userId,
@@ -46,8 +76,9 @@ export async function submitRecording({
   dayNumber,
   audioBlob,
   durationSeconds,
+  existingAudioPath,
 }) {
-  const audioPath = await uploadRecording(userId, topicNumber, audioBlob)
+  const audioPath = existingAudioPath || (await uploadRecording(userId, topicNumber, audioBlob))
 
   const { data: submission, error: upsertError } = await supabase
     .from('eo_submissions')

@@ -35,7 +35,7 @@ export default function ChallengeCalendar() {
         title="Calendrier du défi"
         subtitle="Tous tes 41 jours en un coup d'œil — clique sur un jour pour voir le détail de chaque module."
         accent="gold"
-        image="https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">

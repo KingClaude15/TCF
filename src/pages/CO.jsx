@@ -54,7 +54,7 @@ export default function CO() {
         title="Compréhension Orale"
         subtitle="Séries d'écoute chronométrées avec correction automatique, fidèles au format de l'examen officiel."
         accent="co"
-        image="https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
