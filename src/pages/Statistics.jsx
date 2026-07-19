@@ -40,9 +40,9 @@ export default function Statistics() {
         icon={BarChart3}
         eyebrow="Analyse de performance"
         title="Statistiques"
-        subtitle="Analyse détaillée de ta progression sur les trois épreuves du TCF Canada."
+        subtitle="Analyse détaillée de ta progression sur les quatre épreuves du TCF Canada."
         accent="gold"
-        image="https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&w=1400&q=80"
+        image="https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&w=900&q=60"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

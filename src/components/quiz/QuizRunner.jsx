@@ -19,9 +19,10 @@ export default function QuizRunner({ questions, onFinish, submitting }) {
   }
 
   function handleSubmit() {
-    const correctCount = questions.filter((q) => answers[q.id] === q.correct_index).length
+    const correctFlags = questions.map((q) => answers[q.id] === q.correct_index)
+    const correctCount = correctFlags.filter(Boolean).length
     setSubmitted(true)
-    onFinish(correctCount, questions.length)
+    onFinish(correctCount, questions.length, correctFlags)
   }
 
   return (

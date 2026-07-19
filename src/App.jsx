@@ -21,6 +21,8 @@ const CE = lazy(() => import('./pages/CE'))
 const CEQuiz = lazy(() => import('./pages/CEQuiz'))
 const EE = lazy(() => import('./pages/EE'))
 const EESujetWorkspace = lazy(() => import('./pages/EESujetWorkspace'))
+const EO = lazy(() => import('./pages/EO'))
+const EOSujetWorkspace = lazy(() => import('./pages/EOSujetWorkspace'))
 const LearningCenter = lazy(() => import('./pages/LearningCenter'))
 const ProgressCoach = lazy(() => import('./pages/ProgressCoach'))
 const Statistics = lazy(() => import('./pages/Statistics'))
@@ -64,6 +66,8 @@ export default function App() {
             <Route path="/ce/:seriesNumber" element={<CEQuiz />} />
             <Route path="/ee" element={<EE />} />
             <Route path="/ee/:sujetNumber" element={<EESujetWorkspace />} />
+            <Route path="/eo" element={<EO />} />
+            <Route path="/eo/:sujetNumber" element={<EOSujetWorkspace />} />
             <Route path="/learning-center" element={<LearningCenter />} />
             <Route path="/progress-coach" element={<ProgressCoach />} />
             <Route path="/statistics" element={<Statistics />} />

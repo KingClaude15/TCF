@@ -37,6 +37,21 @@ Exigences structurelles à vérifier STRICTEMENT — c'est la tâche la plus tec
 - Vérifier que le total Partie 1 + Partie 2 respecte 120-180 mots ET que chaque partie respecte individuellement sa fourchette (40-60 puis 80-120) — un déséquilibre entre les deux parties est une faiblesse réelle à l'examen.`,
 }
 
+// Official EE/EO (/20 scale) → CECR level, verified against the Ministère
+// de l'Immigration du Québec's TCF Canada correspondence table and France
+// Compétences' TCF IRN barème. Computed here rather than trusted from the
+// model's own guess, so the label is always exactly right regardless of
+// what the LLM outputs.
+function eeEoScoreToCecr(score: number): string {
+  if (score >= 18) return 'C2'
+  if (score >= 14) return 'C1'
+  if (score >= 10) return 'B2'
+  if (score >= 6) return 'B1'
+  if (score >= 2) return 'A2'
+  if (score >= 1) return 'A1'
+  return 'A1 non atteint'
+}
+
 function buildSystemPrompt(taskType: number, minWords: number, maxWords: number) {
   const taskRule = TASK_RULES[taskType] || TASK_RULES[1]
   return `Tu es un examinateur CERTIFIÉ du TCF Canada (Test de Connaissance du Français), expert en évaluation d'Expression Écrite (EE) selon le CECRL (A1 à C2) et le barème officiel de France Éducation International.
@@ -167,7 +182,7 @@ serve(async (req) => {
       .insert({
         submission_id: submissionId,
         user_id: user.id,
-        cefr_level: parsed.cefr_level,
+        cefr_level: eeEoScoreToCecr(Number(parsed.estimated_score)),
         estimated_score: parsed.estimated_score,
         grammar_feedback: parsed.grammar_feedback,
         vocabulary_feedback: parsed.vocabulary_feedback,

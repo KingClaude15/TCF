@@ -5,6 +5,7 @@ import {
   Headphones,
   BookOpen,
   PenLine,
+  Mic,
   BarChart3,
   Sparkles,
   UserRound,
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
       { to: '/co', label: 'Compréhension Orale', icon: Headphones },
       { to: '/ce', label: 'Compréhension Écrite', icon: BookOpen },
       { to: '/ee', label: 'Expression Écrite', icon: PenLine },
+      { to: '/eo', label: 'Expression Orale', icon: Mic },
     ],
   },
   {

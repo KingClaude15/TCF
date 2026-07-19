@@ -100,3 +100,89 @@ export function sujetToTasks(sujet) {
 export function encodeTopicNumber(sujetNumber, taskType) {
   return Number(sujetNumber) * 10 + Number(taskType)
 }
+
+// ---------------------------------------------------------
+// EO (Expression Orale) — same shape as EE above, but for the
+// spoken-task sujets table.
+// ---------------------------------------------------------
+
+export async function listPublishedEoSujets() {
+  const { data, error } = await supabase
+    .from('eo_sujets')
+    .select('*')
+    .eq('is_published', true)
+    .order('sujet_number', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listAllEoSujets() {
+  const { data, error } = await supabase.from('eo_sujets').select('*').order('sujet_number', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function getEoSujetByNumber(sujetNumber) {
+  const { data, error } = await supabase
+    .from('eo_sujets')
+    .select('*')
+    .eq('sujet_number', Number(sujetNumber))
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function createEoSujet(payload) {
+  const { data, error } = await supabase.from('eo_sujets').insert(payload).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateEoSujet(id, payload) {
+  const { data, error } = await supabase.from('eo_sujets').update(payload).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteEoSujet(id) {
+  const { error } = await supabase.from('eo_sujets').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getNextEoSujetNumber() {
+  const { data, error } = await supabase
+    .from('eo_sujets')
+    .select('sujet_number')
+    .order('sujet_number', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  return (data?.[0]?.sujet_number ?? 0) + 1
+}
+
+/** Normalizes a DB eo_sujet row into the 3 spoken tasks the recording workspace consumes. */
+export function eoSujetToTasks(sujet) {
+  if (!sujet) return []
+  return [
+    {
+      taskType: 1,
+      taskLabel: 'Tâche 1 — Entretien',
+      prompt: sujet.tache1_prompt,
+      maxSeconds: sujet.tache1_max_seconds ?? 60,
+    },
+    {
+      taskType: 2,
+      taskLabel: 'Tâche 2 — Récit / description',
+      prompt: sujet.tache2_prompt,
+      maxSeconds: sujet.tache2_max_seconds ?? 120,
+    },
+    {
+      taskType: 3,
+      taskLabel: 'Tâche 3 — Prise de position',
+      prompt:
+        `${sujet.tache3_theme} : donnez votre avis à l'oral.\n\n` +
+        `Vous pouvez vous appuyer sur ces deux points de vue :\n\n` +
+        `Point de vue 1 : ${sujet.tache3_doc1}\n\nPoint de vue 2 : ${sujet.tache3_doc2}`,
+      maxSeconds: sujet.tache3_max_seconds ?? 180,
+    },
+  ]
+}

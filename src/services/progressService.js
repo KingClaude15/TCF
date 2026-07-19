@@ -41,7 +41,7 @@ export async function getActiveDay(userId) {
 }
 
 export async function markDayModule(userId, dayNumber, moduleKey) {
-  // moduleKey is one of 'co_done' | 'ce_done' | 'ee_done'
+  // moduleKey is one of 'co_done' | 'ce_done' | 'ee_done' | 'eo_done'
   const patch = { [moduleKey]: true }
   const { data, error } = await supabase
     .from('daily_progress')

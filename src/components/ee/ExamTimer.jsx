@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Timer } from 'lucide-react'
 import clsx from 'clsx'
 
-const DURATION_SECONDS = 60 * 60
+const DEFAULT_DURATION_SECONDS = 60 * 60
 
 /**
  * Shared exam countdown. Persists start time in localStorage under `storageKey`
@@ -20,8 +20,8 @@ const DURATION_SECONDS = 60 * 60
  * under them. The parent now only sets `armed` true once the student has
  * actually typed something, so the clock reflects real writing time.
  */
-export default function ExamTimer({ storageKey, armed = true, onExpire }) {
-  const [secondsLeft, setSecondsLeft] = useState(DURATION_SECONDS)
+export default function ExamTimer({ storageKey, armed = true, onExpire, durationSeconds = DEFAULT_DURATION_SECONDS }) {
+  const [secondsLeft, setSecondsLeft] = useState(durationSeconds)
   const [expired, setExpired] = useState(false)
 
   const getStartTime = useCallback(() => {
@@ -39,7 +39,7 @@ export default function ExamTimer({ storageKey, armed = true, onExpire }) {
 
     function tick() {
       const elapsed = Math.floor((Date.now() - startTime) / 1000)
-      const remaining = Math.max(0, DURATION_SECONDS - elapsed)
+      const remaining = Math.max(0, durationSeconds - elapsed)
       setSecondsLeft(remaining)
       if (remaining === 0) {
         setExpired(true)
@@ -50,11 +50,11 @@ export default function ExamTimer({ storageKey, armed = true, onExpire }) {
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [armed, getStartTime, onExpire])
+  }, [armed, getStartTime, onExpire, durationSeconds])
 
   const minutes = Math.floor(secondsLeft / 60)
   const seconds = secondsLeft % 60
-  const isLow = armed && secondsLeft <= 5 * 60
+  const isLow = armed && secondsLeft <= Math.min(5 * 60, Math.floor(durationSeconds / 4))
 
   return (
     <div

@@ -5,6 +5,7 @@ const ACCENTS = {
   co: 'from-sky-600 via-sky-800 to-ink-900',
   ce: 'from-violet-600 via-violet-800 to-ink-900',
   ee: 'from-pink-600 via-pink-800 to-ink-900',
+  eo: 'from-orange-500 via-orange-700 to-ink-900',
   gold: 'from-gold-500 via-ink-800 to-ink-900',
 }
 

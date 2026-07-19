@@ -13,7 +13,7 @@ import { listAllUsers } from './adminService'
  * FK/migration just for this, and just as fast at this data scale.
  */
 export async function listAllActivity() {
-  const [users, coRes, ceRes, eeRes] = await Promise.all([
+  const [users, coRes, ceRes, eeRes, eoRes] = await Promise.all([
     listAllUsers(),
     supabase.from('co_results').select('*').order('created_at', { ascending: false }),
     supabase.from('ce_results').select('*').order('created_at', { ascending: false }),
@@ -21,10 +21,15 @@ export async function listAllActivity() {
       .from('ee_submissions')
       .select('*, ai_feedback(*)')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('eo_submissions')
+      .select('*, eo_feedback(*)')
+      .order('created_at', { ascending: false }),
   ])
   if (coRes.error) throw coRes.error
   if (ceRes.error) throw ceRes.error
   if (eeRes.error) throw eeRes.error
+  if (eoRes.error) throw eoRes.error
 
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]))
 
@@ -37,7 +42,9 @@ export async function listAllActivity() {
     dayNumber: r.day_number,
     score: Number(r.score),
     maxScore: Number(r.max_score),
-    scoreLabel: `${r.score}/${r.max_score}`,
+    scoreLabel: r.weighted_points != null
+      ? `${r.score}/${r.max_score} · ${r.weighted_points}/699 (${r.cecr_level ?? '—'})`
+      : `${r.score}/${r.max_score}`,
     difficulty: r.difficulty,
     date: r.created_at,
   }))
@@ -51,7 +58,9 @@ export async function listAllActivity() {
     dayNumber: r.day_number,
     score: Number(r.score),
     maxScore: Number(r.max_score),
-    scoreLabel: `${r.score}/${r.max_score}`,
+    scoreLabel: r.weighted_points != null
+      ? `${r.score}/${r.max_score} · ${r.weighted_points}/699 (${r.cecr_level ?? '—'})`
+      : `${r.score}/${r.max_score}`,
     difficulty: r.difficulty,
     date: r.created_at,
   }))
@@ -79,5 +88,28 @@ export async function listAllActivity() {
       }
     })
 
-  return [...coActivity, ...ceActivity, ...eeActivity].sort((a, b) => new Date(b.date) - new Date(a.date))
+  const eoActivity = eoRes.data
+    .filter((s) => s.eo_feedback?.[0])
+    .map((s) => {
+      const fb = s.eo_feedback[0]
+      return {
+        id: `eo-${s.id}`,
+        userId: s.user_id,
+        user: userMap[s.user_id],
+        module: 'EO',
+        label: `Sujet ${Math.floor(s.topic_number / 10)} — tâche ${s.topic_number % 10}`,
+        dayNumber: s.day_number,
+        score: Number(fb.estimated_score),
+        maxScore: 20,
+        scoreLabel: `${fb.estimated_score}/20 (${fb.cefr_level ?? '—'})`,
+        difficulty: null,
+        date: s.submitted_at || fb.created_at,
+        prompt: s.prompt,
+        audioPath: s.audio_path,
+        durationSeconds: s.duration_seconds,
+        feedback: fb,
+      }
+    })
+
+  return [...coActivity, ...ceActivity, ...eeActivity, ...eoActivity].sort((a, b) => new Date(b.date) - new Date(a.date))
 }

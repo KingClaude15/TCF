@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { getCoSeries } from '../services/coSeriesService'
 import { upsertCoResult } from '../services/coService'
 import { markDayModule, getActiveDay } from '../services/progressService'
+import { computeWeightedPoints, coCeScoreToCecr } from '../lib/tcfScoring'
 import QuizRunner from '../components/quiz/QuizRunner'
 
 const DIFFICULTY_LABELS = { easy: 'Facile', medium: 'Moyen', hard: 'Difficile' }
@@ -35,21 +36,27 @@ export default function COQuiz() {
       .finally(() => setLoading(false))
   }, [seriesNumber])
 
-  async function handleFinish(correctCount, total) {
+  async function handleFinish(correctCount, total, correctFlags) {
     setSubmitting(true)
     try {
       const dayNumber = await getActiveDay(user.id)
       const timeTakenSeconds = Math.round((Date.now() - startedAt) / 1000)
+      const { points, maxPoints, isOfficialLength } = computeWeightedPoints(correctFlags || [])
+      const cecrLevel = coCeScoreToCecr(points)
       await upsertCoResult(user.id, {
         series_number: Number(seriesNumber),
         score: correctCount,
         max_score: total,
+        weighted_points: points,
+        cecr_level: cecrLevel,
         time_taken_seconds: timeTakenSeconds,
         difficulty: series.difficulty,
         day_number: dayNumber,
       })
       await markDayModule(user.id, dayNumber, 'co_done')
-      toast.success(`Série enregistrée : ${correctCount}/${total}`)
+      toast.success(
+        `Série enregistrée : ${correctCount}/${total} · ${points}/${maxPoints} pts${isOfficialLength ? '' : ' (estimé)'} · Niveau ${cecrLevel}`
+      )
       setFinished(true)
     } catch (err) {
       toast.error(err.message)
