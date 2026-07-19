@@ -7,6 +7,7 @@ import StatCard from '../components/ui/StatCard'
 import EmptyState from '../components/ui/EmptyState'
 import PageHeader from '../components/ui/PageHeader'
 import { PenLine, Target, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
 
 export default function EE() {
   const { user } = useAuth()
@@ -63,6 +64,7 @@ export default function EE() {
             const taskStates = [1, 2, 3].map((t) => byTopicNumber.get(encodeTopicNumber(sujet.sujet_number, t)));
             const doneCount = taskStates.filter((s) => s?.status === 'evaluated').length
             const started = taskStates.some((s) => s)
+            const band = computeSujetBandScore(taskStates.map((s) => s?.ai_feedback?.[0]?.estimated_score))
 
             return (
               <button
@@ -79,6 +81,17 @@ export default function EE() {
                   )}
                 </div>
                 <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{sujet.tache1_prompt}</p>
+
+                {band && (
+                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Score du sujet</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold">{band.score} / 20</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${CEFR_BAND_STYLES[band.cefr]}`}>{band.cefr}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold">
                   {[1, 2, 3].map((t) => (
                     <span

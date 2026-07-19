@@ -9,6 +9,7 @@ import { markDayModule, getActiveDay } from '../services/progressService'
 import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AccentPalette from '../components/ee/AccentPalette'
 import AiFeedbackPanel from '../components/ee/AiFeedbackPanel'
+import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
 
 const AUTOSAVE_INTERVAL_MS = 10000
 
@@ -270,6 +271,20 @@ export default function EESujetWorkspace() {
             {phase === 'closed-empty' ? "Le temps est écoulé et aucune réponse n'a été soumise." : 'Ce sujet est terminé.'}
           </p>
         </div>
+
+        {(() => {
+          const band = computeSujetBandScore(tasks.map((_, i) => feedbacks[i]?.estimated_score))
+          if (!band) return null
+          return (
+            <div className="card flex items-center justify-between p-5">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Score du sujet (moyenne des 3 tâches)</p>
+                <p className="mt-1 font-heading text-2xl font-bold">{band.score} / 20</p>
+              </div>
+              <span className={`rounded-full px-3 py-1.5 text-sm font-bold ${CEFR_BAND_STYLES[band.cefr]}`}>{band.cefr}</span>
+            </div>
+          )
+        })()}
 
         {tasks.map((t, i) => (
           <div key={t.taskType} className="space-y-3">
