@@ -61,3 +61,17 @@ export async function recalculateStreak(userId) {
     last_active_date: new Date().toISOString().slice(0, 10),
   })
 }
+
+/**
+ * Permanently deletes the current user's account and all associated data
+ * (progress, CO/CE/EE/EO history, AI feedback, achievements — everything
+ * cascades from the auth.users row). This cannot be undone. After this
+ * resolves, the caller should sign out and redirect to a public page, since
+ * the session is no longer valid.
+ */
+export async function deleteMyAccount() {
+  const { data, error } = await supabase.functions.invoke('delete-account', { body: {} })
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data
+}

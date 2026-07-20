@@ -1,4 +1,4 @@
-import { toastError } from '../lib/errorMessages'
+import { toastError } from '../../lib/errorMessages'
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Loader2, Search, Headphones, BookOpen, PenLine, Mic, RefreshCcw, Eye } from 'lucide-react'

@@ -1,4 +1,4 @@
-import { toastError } from '../lib/errorMessages'
+import { toastError } from '../../lib/errorMessages'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'

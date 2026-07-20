@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useChallengeData } from '../hooks/useChallengeData'
-import { updateProfile } from '../services/profileService'
+import { updateProfile, deleteMyAccount } from '../services/profileService'
 import { toastError } from '../lib/errorMessages'
 import toast from 'react-hot-toast'
+import Modal from '../components/ui/Modal'
 import {
   Loader2, Save, UserRound, CalendarDays, Target, Flame,
   Trophy, TrendingUp, Headphones, BookOpen, PenLine,
-  ShieldCheck, Mail, BadgeCheck, Clock, Mic,
+  ShieldCheck, Mail, BadgeCheck, Clock, Mic, AlertTriangle, Trash2,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -81,7 +83,8 @@ function ScoreBadge({ score, max, label, icon: Icon, cecrLevel, color }) {
 }
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const { profile, loading, refresh, coResults, ceResults, eeSubmissions, coAverage, ceAverage, eeAverage } = useChallengeData()
 
   const [fullName,    setFullName]    = useState('')
@@ -89,6 +92,9 @@ export default function Profile() {
   const [examDate,    setExamDate]    = useState('')
   const [saving,      setSaving]      = useState(false)
   const [activeTab,   setActiveTab]   = useState('info')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   // Sync form with loaded profile
   useEffect(() => {
@@ -125,6 +131,20 @@ export default function Profile() {
       toastError(err, 'Impossible de mettre à jour le profil')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'SUPPRIMER') return
+    setDeletingAccount(true)
+    try {
+      await deleteMyAccount()
+      toast.success('Ton compte a été supprimé.')
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      toastError(err, 'Impossible de supprimer le compte')
+      setDeletingAccount(false)
     }
   }
 
@@ -420,6 +440,85 @@ export default function Profile() {
           </div>
         </form>
       )}
+
+      {activeTab === 'settings' && (
+        <div className="card space-y-4 border-red-200 p-6 dark:border-red-900/60">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300">
+              <AlertTriangle size={17} />
+            </div>
+            <h2 className="font-heading text-base font-bold text-ink-900 dark:text-white">Zone dangereuse</h2>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Supprimer ton compte efface définitivement ta progression, tes scores CO/CE/EE/EO, tes corrections IA et
+            tes badges. Cette action est irréversible et ne peut pas être annulée.
+          </p>
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+          >
+            <Trash2 size={15} /> Supprimer mon compte
+          </button>
+        </div>
+      )}
+
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => {
+          if (!deletingAccount) {
+            setDeleteModalOpen(false)
+            setDeleteConfirmText('')
+          }
+        }}
+        title="Supprimer définitivement ton compte ?"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="font-semibold">Cette action est irréversible.</p>
+            <p className="mt-1">
+              Tout sera perdu définitivement : ton profil, ta progression sur les 41 jours, tes résultats CO/CE, tes
+              copies EE et enregistrements EO, tes corrections IA, tes fiches d'apprentissage et tes badges. Rien de
+              tout cela ne peut être récupéré après la suppression.
+            </p>
+          </div>
+
+          <div>
+            <label className="label" htmlFor="deleteConfirm">
+              Tape <span className="font-bold">SUPPRIMER</span> pour confirmer
+            </label>
+            <input
+              id="deleteConfirm"
+              className="input-field"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="SUPPRIMER"
+              disabled={deletingAccount}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setDeleteModalOpen(false)
+                setDeleteConfirmText('')
+              }}
+              disabled={deletingAccount}
+              className="btn-secondary flex-1"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== 'SUPPRIMER' || deletingAccount}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              {deletingAccount ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={15} />}
+              Supprimer définitivement
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -82,8 +82,8 @@ export default function Dashboard() {
       </Link>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={Headphones} label="Score CO moyen" value={coAverage ?? '—'} sublabel="sur 39" accent="co" />
-        <StatCard icon={BookOpen} label="Score CE moyen" value={ceAverage ?? '—'} sublabel="sur 39" accent="ce" />
+        <StatCard icon={Headphones} label="Score CO moyen" value={coAverage ?? '—'} sublabel="sur 699" accent="co" />
+        <StatCard icon={BookOpen} label="Score CE moyen" value={ceAverage ?? '—'} sublabel="sur 699" accent="ce" />
         <div className="card p-5">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Progression du défi</p>
           <ProgressBar value={completionPct} color="brand" size="lg" />

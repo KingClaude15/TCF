@@ -29,8 +29,8 @@ export default function Statistics() {
   const weeklyCompletion = buildWeeklyCompletion(progressRows)
 
   const radialData = [
-    { name: 'CO', value: coAverage ? Math.round((coAverage / 39) * 100) : 0, fill: '#0ea5e9' },
-    { name: 'CE', value: ceAverage ? Math.round((ceAverage / 39) * 100) : 0, fill: '#8b5cf6' },
+    { name: 'CO', value: coAverage ? Math.round((coAverage / 699) * 100) : 0, fill: '#0ea5e9' },
+    { name: 'CE', value: ceAverage ? Math.round((ceAverage / 699) * 100) : 0, fill: '#8b5cf6' },
     { name: 'EE', value: eeAverage ? Math.round((eeAverage / 20) * 100) : 0, fill: '#ec4899' },
   ]
 
