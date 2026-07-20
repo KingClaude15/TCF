@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Flame, CalendarCheck2, Headphones, BookOpen, PenLine, TrendingUp, ArrowRight, Brain } from 'lucide-react'
+import { Flame, CalendarCheck2, Headphones, BookOpen, PenLine, Mic, TrendingUp, ArrowRight, Brain } from 'lucide-react'
 import { useChallengeData } from '../hooks/useChallengeData'
 import StatCard from '../components/ui/StatCard'
 import ProgressBar from '../components/ui/ProgressBar'
 import EmptyState from '../components/ui/EmptyState'
 
 export default function Dashboard() {
-  const { loading, profile, progressRows, coResults, ceResults, completionPct, activeDay, coAverage, ceAverage, eeAverage } =
+  const { loading, profile, progressRows, coResults, ceResults, completionPct, activeDay, coAverage, ceAverage, eeAverage, eoAverage } =
     useChallengeData()
 
   if (loading) return <DashboardSkeleton />
@@ -51,6 +51,7 @@ export default function Dashboard() {
               <ModuleChip label="CO" done={today?.co_done} />
               <ModuleChip label="CE" done={today?.ce_done} />
               <ModuleChip label="EE" done={today?.ee_done} />
+              <ModuleChip label="EO" done={today?.eo_done} />
             </div>
           </div>
           <Link to="/calendar" className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-brand-50">
@@ -81,9 +82,10 @@ export default function Dashboard() {
         <ArrowRight size={18} className="shrink-0 text-slate-400" />
       </Link>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Headphones} label="Score CO moyen" value={coAverage ?? '—'} sublabel="sur 699" accent="co" />
         <StatCard icon={BookOpen} label="Score CE moyen" value={ceAverage ?? '—'} sublabel="sur 699" accent="ce" />
+        <StatCard icon={Mic} label="Score EO moyen" value={eoAverage ?? '—'} sublabel="sur 20" accent="eo" />
         <div className="card p-5">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Progression du défi</p>
           <ProgressBar value={completionPct} color="brand" size="lg" />

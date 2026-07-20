@@ -123,7 +123,25 @@ export function predictReadiness({ profile, progressRows = [], coResults = [], c
   const startDate = profile?.challenge_start_date ? new Date(profile.challenge_start_date) : null
   const weeksElapsed = startDate ? Math.max((Date.now() - startDate.getTime()) / (7 * 86400000), 1 / 7) : null
   const paceDaysPerWeek = startDate && daysCompleted > 0 ? daysCompleted / weeksElapsed : null
-  const weeksRemaining = paceDaysPerWeek && paceDaysPerWeek > 0 ? daysRemaining / paceDaysPerWeek : null
+  const paceWeeksRemaining = paceDaysPerWeek && paceDaysPerWeek > 0 ? daysRemaining / paceDaysPerWeek : null
+
+  // The student's actual exam date (if set) is the real deadline —
+  // independent of how fast they're clearing the 41-day plan. Projections
+  // should reflect whichever horizon is sooner: if the exam is in 3 weeks
+  // but the student is on pace to finish the plan in 6, "3 weeks" is what
+  // actually determines readiness, not the plan's own pace.
+  const examDate = profile?.exam_date ? new Date(profile.exam_date) : null
+  const daysUntilExam = examDate ? Math.ceil((examDate.getTime() - Date.now()) / 86400000) : null
+  const weeksUntilExam = daysUntilExam !== null ? Math.max(daysUntilExam / 7, 0) : null
+
+  const weeksRemaining =
+    weeksUntilExam !== null && paceWeeksRemaining !== null
+      ? Math.min(weeksUntilExam, paceWeeksRemaining)
+      : weeksUntilExam !== null
+      ? weeksUntilExam
+      : paceWeeksRemaining
+
+  const examIsSoonerThanPace = weeksUntilExam !== null && paceWeeksRemaining !== null && weeksUntilExam < paceWeeksRemaining
 
   const targetPct = profile?.target_score ? (profile.target_score / 20) * 100 : null
   const eeTargetPct = profile?.target_score ? (profile.target_score / 20) * 100 : null
@@ -153,13 +171,16 @@ export function predictReadiness({ profile, progressRows = [], coResults = [], c
     daysRemaining,
     paceDaysPerWeek: paceDaysPerWeek ? Number(paceDaysPerWeek.toFixed(1)) : null,
     weeksRemaining: weeksRemaining ? Number(weeksRemaining.toFixed(1)) : null,
+    daysUntilExam,
+    weeksUntilExam: weeksUntilExam !== null ? Number(weeksUntilExam.toFixed(1)) : null,
+    examIsSoonerThanPace,
     modules,
     overallStatus,
-    narrative: buildNarrative({ modules, overallStatus, daysCompleted, weeksRemaining }),
+    narrative: buildNarrative({ modules, overallStatus, daysCompleted, weeksRemaining, daysUntilExam, examIsSoonerThanPace }),
   }
 }
 
-function buildNarrative({ modules, overallStatus, daysCompleted, weeksRemaining }) {
+function buildNarrative({ modules, overallStatus, daysCompleted, weeksRemaining, daysUntilExam, examIsSoonerThanPace }) {
   if (overallStatus === 'insufficient_data') {
     return "Pas encore assez de données pour une prédiction fiable. Complète quelques séries CO, CE et une correction EE pour débloquer ton analyse de préparation."
   }
@@ -168,9 +189,17 @@ function buildNarrative({ modules, overallStatus, daysCompleted, weeksRemaining 
   const weakest = withData.reduce((a, b) => (a.projectedPct < b.projectedPct ? a : b), withData[0])
   const strongest = withData.reduce((a, b) => (a.projectedPct > b.projectedPct ? a : b), withData[0])
 
-  const paceNote = weeksRemaining !== null
-    ? `À ton rythme actuel, il te reste environ ${weeksRemaining} semaine${weeksRemaining >= 2 ? 's' : ''} pour terminer les 41 jours.`
-    : "Complète quelques jours de plus pour qu'on puisse estimer ton rythme."
+  let paceNote
+  if (daysUntilExam !== null && examIsSoonerThanPace) {
+    paceNote =
+      daysUntilExam >= 0
+        ? `Ton examen est prévu dans ${daysUntilExam} jour${daysUntilExam >= 2 ? 's' : ''} — plus tôt que ton rythme actuel ne le laisserait penser pour finir les 41 jours. Priorise le temps qu'il te reste.`
+        : "La date d'examen renseignée est déjà passée — mets-la à jour dans ton profil si tu prépares une nouvelle session."
+  } else if (weeksRemaining !== null) {
+    paceNote = `À ton rythme actuel, il te reste environ ${weeksRemaining.toFixed(1)} semaine${weeksRemaining >= 2 ? 's' : ''} pour terminer les 41 jours.`
+  } else {
+    paceNote = "Complète quelques jours de plus pour qu'on puisse estimer ton rythme."
+  }
 
   if (overallStatus === 'ahead') {
     return `Excellente trajectoire — tu es en avance sur ton objectif, notamment en ${strongest.label}. ${paceNote} Continue sur cette lancée.`

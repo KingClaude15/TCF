@@ -79,11 +79,17 @@ export default function ProgressCoach() {
           </span>
         </div>
         <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{readiness.narrative}</p>
-        {readiness.paceDaysPerWeek !== null && (
+        {(readiness.paceDaysPerWeek !== null || readiness.daysUntilExam !== null) && (
           <div className="flex flex-wrap gap-4 border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800">
-            <span>Rythme actuel : ~{readiness.paceDaysPerWeek} jour(s)/semaine</span>
+            {readiness.paceDaysPerWeek !== null && <span>Rythme actuel : ~{readiness.paceDaysPerWeek} jour(s)/semaine</span>}
             <span>{readiness.daysCompleted}/41 jours complétés</span>
-            {readiness.weeksRemaining !== null && <span>~{readiness.weeksRemaining} semaine(s) restantes au rythme actuel</span>}
+            {readiness.daysUntilExam !== null ? (
+              <span className={clsx('font-semibold', readiness.examIsSoonerThanPace && 'text-amber-600 dark:text-amber-400')}>
+                {readiness.daysUntilExam >= 0 ? `Examen dans ${readiness.daysUntilExam} jour(s)` : "Date d'examen dépassée"}
+              </span>
+            ) : (
+              readiness.weeksRemaining !== null && <span>~{readiness.weeksRemaining} semaine(s) restantes au rythme actuel</span>
+            )}
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ const ACCENTS = {
   co: 'bg-co-light text-co-dark dark:bg-sky-950 dark:text-sky-300 ring-sky-100 dark:ring-sky-900',
   ce: 'bg-ce-light text-ce-dark dark:bg-violet-950 dark:text-violet-300 ring-violet-100 dark:ring-violet-900',
   ee: 'bg-ee-light text-ee-dark dark:bg-pink-950 dark:text-pink-300 ring-pink-100 dark:ring-pink-900',
+  eo: 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300 ring-orange-100 dark:ring-orange-900',
   amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-300 ring-amber-100 dark:ring-amber-900',
   gold: 'bg-gold-50 text-gold-700 dark:bg-gold-900/40 dark:text-gold-300 ring-gold-100 dark:ring-gold-900',
 }

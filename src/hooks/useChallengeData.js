@@ -5,6 +5,7 @@ import { getAllDailyProgress, computeOverallCompletion, computeActiveDay } from 
 import { listCoResults, computeAverage as coAvg } from '../services/coService'
 import { listCeResults, computeAverage as ceAvg } from '../services/ceService'
 import { listEeSubmissions, computeAverageEeScore } from '../services/eeService'
+import { listEoSubmissions, computeAverageEoScore } from '../services/eoService'
 import { evaluateAchievements } from '../services/achievementsService'
 
 /**
@@ -21,18 +22,20 @@ export function useChallengeData() {
     coResults: [],
     ceResults: [],
     eeSubmissions: [],
+    eoSubmissions: [],
   })
 
   const refresh = useCallback(async () => {
     if (!user) return
     setState((s) => ({ ...s, loading: true, error: null }))
     try {
-      const [profile, progressRows, coResults, ceResults, eeSubmissions] = await Promise.all([
+      const [profile, progressRows, coResults, ceResults, eeSubmissions, eoSubmissions] = await Promise.all([
         getProfile(user.id),
         getAllDailyProgress(user.id),
         listCoResults(user.id),
         listCeResults(user.id),
         listEeSubmissions(user.id),
+        listEoSubmissions(user.id),
       ])
 
       // Keep streaks fresh, then re-fetch achievements eligibility
@@ -48,6 +51,7 @@ export function useChallengeData() {
         coResults,
         ceResults,
         eeSubmissions,
+        eoSubmissions,
       })
     } catch (err) {
       setState((s) => ({ ...s, loading: false, error: err.message }))
@@ -63,6 +67,7 @@ export function useChallengeData() {
   const coAverage = coAvg(state.coResults)
   const ceAverage = ceAvg(state.ceResults)
   const eeAverage = computeAverageEeScore(state.eeSubmissions)
+  const eoAverage = computeAverageEoScore(state.eoSubmissions)
 
-  return { ...state, refresh, completionPct, activeDay, coAverage, ceAverage, eeAverage }
+  return { ...state, refresh, completionPct, activeDay, coAverage, ceAverage, eeAverage, eoAverage }
 }
