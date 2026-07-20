@@ -1,3 +1,4 @@
+import { toastError } from '../../lib/errorMessages'
 import { Menu, Sun, Moon, LogOut, ChevronDown, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { useTheme } from '../../context/ThemeContext'
@@ -16,7 +17,7 @@ export default function Topbar({ onMenuClick, title }) {
       await signOut()
       navigate('/login')
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur lors de la déconnexion')
     }
   }
 

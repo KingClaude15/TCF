@@ -25,8 +25,13 @@ export async function upsertCoResult(userId, payload) {
 
 export function computeAverage(results) {
   if (!results?.length) return null
-  const total = results.reduce((sum, r) => sum + Number(r.score), 0)
-  return Number((total / results.length).toFixed(1))
+  // Normalise legacy /39 rows to /699 before averaging
+  const total = results.reduce((sum, r) => {
+    const raw = Number(r.score)
+    const max = Number(r.max_score || 699)
+    return sum + (max === 699 ? raw : Math.round((raw / max) * 699))
+  }, 0)
+  return Math.round(total / results.length)
 }
 
 export function identifyWeakAreas(results, { threshold = 0.6 } = {}) {

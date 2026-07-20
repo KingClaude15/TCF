@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -229,7 +230,7 @@ export default function EOSujetWorkspace() {
           toast.success(auto ? 'Temps écoulé — sujet soumis automatiquement.' : 'Sujet soumis et évalué !')
         }
       } catch (err) {
-        toast.error(err.message || 'Échec de la soumission du sujet')
+        toastError(err, 'Erreur lors de la soumission EO')
       } finally {
         setSubmittingAll(false)
       }
@@ -270,7 +271,7 @@ export default function EOSujetWorkspace() {
       setPhase('recording')
       toast.success('Sujet réinitialisé — bonne chance pour cette nouvelle tentative !')
     } catch (err) {
-      toast.error(err.message || 'Impossible de réinitialiser ce sujet')
+      toastError(err, 'Erreur lors de la soumission EO')
     } finally {
       setRetaking(false)
     }

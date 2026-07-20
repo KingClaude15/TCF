@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useState } from 'react'
 import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -25,7 +26,7 @@ export default function Login() {
       toast.success('Bon retour !')
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message || 'Échec de la connexion')
+      toastError(err, 'Échec de la connexion')
     } finally {
       setLoading(false)
     }
@@ -36,7 +37,7 @@ export default function Login() {
     try {
       await signInWithGoogle()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Échec de la connexion')
       setGoogleLoading(false)
     }
   }

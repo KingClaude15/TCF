@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -28,7 +29,7 @@ export default function Signup() {
       toast.success('Compte créé ! Un administrateur doit approuver ton accès avant de commencer.')
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message || "Échec de l'inscription")
+      toastError(err, 'Echec de l inscription')
     } finally {
       setLoading(false)
     }
@@ -39,7 +40,7 @@ export default function Signup() {
     try {
       await signInWithGoogle()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Echec de l inscription')
       setGoogleLoading(false)
     }
   }

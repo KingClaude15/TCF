@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -29,7 +30,7 @@ export default function AdminUsers() {
     try {
       setUsers(await listAllUsers())
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion utilisateur')
     } finally {
       setLoading(false)
     }
@@ -46,7 +47,7 @@ export default function AdminUsers() {
       toast.success('Statut mis à jour')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion utilisateur')
     } finally {
       setBusyId(null)
     }
@@ -59,7 +60,7 @@ export default function AdminUsers() {
       toast.success('Rôle mis à jour')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion utilisateur')
     } finally {
       setBusyId(null)
     }
@@ -73,7 +74,7 @@ export default function AdminUsers() {
       toast.success('Utilisateur supprimé')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion utilisateur')
     } finally {
       setBusyId(null)
     }
@@ -242,7 +243,7 @@ function CreateUserModal({ open, onClose, onCreated, isSuperAdmin }) {
       onClose()
       onCreated()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion utilisateur')
     } finally {
       setSaving(false)
     }

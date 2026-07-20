@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -40,7 +41,7 @@ export default function AdminCO() {
     try {
       setSeries(await listAllCoSeries())
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CO')
     } finally {
       setLoading(false)
     }
@@ -67,7 +68,7 @@ export default function AdminCO() {
       await updateCoSeries(s.id, { is_published: !s.is_published })
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CO')
     } finally {
       setBusyId(null)
     }
@@ -81,7 +82,7 @@ export default function AdminCO() {
       toast.success('Série supprimée')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CO')
     } finally {
       setBusyId(null)
     }
@@ -222,7 +223,7 @@ function CoFormModal({ open, onClose, initial, userId, onSaved }) {
       }
       onSaved()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CO')
     } finally {
       setSaving(false)
     }

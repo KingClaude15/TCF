@@ -6,35 +6,35 @@ import AdminRoute from './components/layout/AdminRoute'
 import AppLayout from './components/layout/AppLayout'
 
 // Login is needed immediately (it's usually the first screen), so it stays
-// a normal import. Everything else loads on demand, split per route, so the
-// first paint only ships the code the visitor actually needs right now.
+// a normal import. Everything else loads on demand, split per route.
 import Login from './pages/Login'
 
-const Signup = lazy(() => import('./pages/Signup'))
-const PendingApproval = lazy(() => import('./pages/PendingApproval'))
+const Signup           = lazy(() => import('./pages/Signup'))
+const PendingApproval  = lazy(() => import('./pages/PendingApproval'))
 const SuspendedAccount = lazy(() => import('./pages/SuspendedAccount'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ResetPassword    = lazy(() => import('./pages/ResetPassword'))   // ← NEW
+const Dashboard        = lazy(() => import('./pages/Dashboard'))
 const ChallengeCalendar = lazy(() => import('./pages/ChallengeCalendar'))
-const CO = lazy(() => import('./pages/CO'))
-const COQuiz = lazy(() => import('./pages/COQuiz'))
-const CE = lazy(() => import('./pages/CE'))
-const CEQuiz = lazy(() => import('./pages/CEQuiz'))
-const EE = lazy(() => import('./pages/EE'))
+const CO               = lazy(() => import('./pages/CO'))
+const COQuiz           = lazy(() => import('./pages/COQuiz'))
+const CE               = lazy(() => import('./pages/CE'))
+const CEQuiz           = lazy(() => import('./pages/CEQuiz'))
+const EE               = lazy(() => import('./pages/EE'))
 const EESujetWorkspace = lazy(() => import('./pages/EESujetWorkspace'))
-const EO = lazy(() => import('./pages/EO'))
+const EO               = lazy(() => import('./pages/EO'))
 const EOSujetWorkspace = lazy(() => import('./pages/EOSujetWorkspace'))
-const LearningCenter = lazy(() => import('./pages/LearningCenter'))
-const ProgressCoach = lazy(() => import('./pages/ProgressCoach'))
-const Statistics = lazy(() => import('./pages/Statistics'))
-const Recommendations = lazy(() => import('./pages/Recommendations'))
-const Profile = lazy(() => import('./pages/Profile'))
-const AdminHome = lazy(() => import('./pages/admin/AdminHome'))
-const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
-const AdminActivity = lazy(() => import('./pages/admin/AdminActivity'))
-const AdminSujets = lazy(() => import('./pages/admin/AdminSujets'))
-const AdminCO = lazy(() => import('./pages/admin/AdminCO'))
-const AdminCE = lazy(() => import('./pages/admin/AdminCE'))
-const NotFound = lazy(() => import('./pages/NotFound'))
+const LearningCenter   = lazy(() => import('./pages/LearningCenter'))
+const ProgressCoach    = lazy(() => import('./pages/ProgressCoach'))
+const Statistics       = lazy(() => import('./pages/Statistics'))
+const Recommendations  = lazy(() => import('./pages/Recommendations'))
+const Profile          = lazy(() => import('./pages/Profile'))
+const AdminHome        = lazy(() => import('./pages/admin/AdminHome'))
+const AdminUsers       = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminActivity    = lazy(() => import('./pages/admin/AdminActivity'))
+const AdminSujets      = lazy(() => import('./pages/admin/AdminSujets'))
+const AdminCO          = lazy(() => import('./pages/admin/AdminCO'))
+const AdminCE          = lazy(() => import('./pages/admin/AdminCE'))
+const NotFound         = lazy(() => import('./pages/NotFound'))
 
 function PageLoader() {
   return (
@@ -47,48 +47,61 @@ function PageLoader() {
 export default function App() {
   return (
     <>
-      <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: { fontSize: '14px', maxWidth: '420px' },
+          success: { duration: 3000 },
+          error:   { duration: 5000 },  // errors stay longer so users can read them
+        }}
+      />
       <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/pending" element={<PendingApproval />} />
-        <Route path="/suspended" element={<SuspendedAccount />} />
+        <Routes>
+          {/* ── Public routes ─────────────────────────────────────── */}
+          <Route path="/login"          element={<Login />} />
+          <Route path="/signup"         element={<Signup />} />
+          <Route path="/pending"        element={<PendingApproval />} />
+          <Route path="/suspended"      element={<SuspendedAccount />} />
+          <Route path="/reset-password" element={<ResetPassword />} />  {/* ← FIXED */}
 
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/calendar" element={<ChallengeCalendar />} />
-            <Route path="/co" element={<CO />} />
-            <Route path="/co/:seriesNumber" element={<COQuiz />} />
-            <Route path="/ce" element={<CE />} />
-            <Route path="/ce/:seriesNumber" element={<CEQuiz />} />
-            <Route path="/ee" element={<EE />} />
-            <Route path="/ee/:sujetNumber" element={<EESujetWorkspace />} />
-            <Route path="/eo" element={<EO />} />
-            <Route path="/eo/:sujetNumber" element={<EOSujetWorkspace />} />
-            <Route path="/learning-center" element={<LearningCenter />} />
-            <Route path="/progress-coach" element={<ProgressCoach />} />
-            <Route path="/statistics" element={<Statistics />} />
-            <Route path="/recommendations" element={<Recommendations />} />
-            <Route path="/profile" element={<Profile />} />
+          {/* ── Protected routes ──────────────────────────────────── */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path="/"           element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard"  element={<Dashboard />} />
+              <Route path="/calendar"   element={<ChallengeCalendar />} />
+              <Route path="/co"         element={<CO />} />
+              <Route path="/co/:seriesNumber" element={<COQuiz />} />
+              <Route path="/ce"         element={<CE />} />
+              <Route path="/ce/:seriesNumber" element={<CEQuiz />} />
+              <Route path="/ee"         element={<EE />} />
+              <Route path="/ee/:sujetNumber"  element={<EESujetWorkspace />} />
+              <Route path="/eo"         element={<EO />} />
+              <Route path="/eo/:sujetNumber"  element={<EOSujetWorkspace />} />
+              <Route path="/learning-center"  element={<LearningCenter />} />
+              <Route path="/progress-coach"   element={<ProgressCoach />} />
+              <Route path="/statistics"       element={<Statistics />} />
+              <Route path="/recommendations"  element={<Recommendations />} />
+              <Route path="/profile"          element={<Profile />} />
 
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<AdminHome />}>
-                <Route index element={<Navigate to="/admin/users" replace />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="activity" element={<AdminActivity />} />
-                <Route path="sujets" element={<AdminSujets />} />
-                <Route path="co" element={<AdminCO />} />
-                <Route path="ce" element={<AdminCE />} />
+              {/* ── Admin routes ──────────────────────────────────── */}
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminHome />}>
+                  <Route index element={<Navigate to="/admin/users" replace />} />
+                  <Route path="users"    element={<AdminUsers />} />
+                  <Route path="activity" element={<AdminActivity />} />
+                  <Route path="sujets"   element={<AdminSujets />} />
+                  <Route path="co"       element={<AdminCO />} />
+                  <Route path="ce"       element={<AdminCE />} />
+                </Route>
               </Route>
             </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* ── 404 catch-all ─────────────────────────────────────── */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </Suspense>
     </>
   )

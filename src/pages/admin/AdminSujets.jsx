@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -36,7 +37,7 @@ export default function AdminSujets() {
     try {
       setSujets(await listAllSujets())
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion des sujets')
     } finally {
       setLoading(false)
     }
@@ -63,7 +64,7 @@ export default function AdminSujets() {
       await updateSujet(sujet.id, { is_published: !sujet.is_published })
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion des sujets')
     } finally {
       setBusyId(null)
     }
@@ -77,7 +78,7 @@ export default function AdminSujets() {
       toast.success('Sujet supprimé')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion des sujets')
     } finally {
       setBusyId(null)
     }
@@ -187,7 +188,7 @@ function SujetFormModal({ open, onClose, initial, userId, onSaved }) {
       }
       onSaved()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion des sujets')
     } finally {
       setSaving(false)
     }

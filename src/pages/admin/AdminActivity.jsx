@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Loader2, Search, Headphones, BookOpen, PenLine, Mic, RefreshCcw, Eye } from 'lucide-react'
@@ -43,7 +44,7 @@ export default function AdminActivity() {
     try {
       setActivity(await listAllActivity())
     } catch (err) {
-      toast.error(err.message || "Impossible de charger l'activité")
+      toastError(err, 'Impossible de charger l activite')
     } finally {
       setLoading(false)
     }

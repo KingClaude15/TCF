@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -39,7 +40,7 @@ export default function AdminCE() {
     try {
       setSeries(await listAllCeSeries())
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CE')
     } finally {
       setLoading(false)
     }
@@ -66,7 +67,7 @@ export default function AdminCE() {
       await updateCeSeries(s.id, { is_published: !s.is_published })
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CE')
     } finally {
       setBusyId(null)
     }
@@ -80,7 +81,7 @@ export default function AdminCE() {
       toast.success('Série supprimée')
       await load()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CE')
     } finally {
       setBusyId(null)
     }
@@ -220,7 +221,7 @@ function CeFormModal({ open, onClose, initial, userId, onSaved }) {
       }
       onSaved()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Erreur de gestion CE')
     } finally {
       setSaving(false)
     }

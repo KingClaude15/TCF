@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Clock3, LogOut, GraduationCap } from 'lucide-react'
@@ -28,7 +29,7 @@ export default function PendingApproval() {
     try {
       await signOut()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Impossible de contacter le support')
     }
   }
 

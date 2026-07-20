@@ -1,3 +1,4 @@
+import { toastError } from '../lib/errorMessages'
 import { Navigate } from 'react-router-dom'
 import { ShieldAlert, LogOut, GraduationCap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -13,7 +14,7 @@ export default function SuspendedAccount() {
     try {
       await signOut()
     } catch (err) {
-      toast.error(err.message)
+      toastError(err, 'Impossible de contacter le support')
     }
   }
 
