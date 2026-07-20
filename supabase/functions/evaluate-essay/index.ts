@@ -1,12 +1,26 @@
 // Supabase Edge Function: evaluate-essay
-// Deploy: supabase functions deploy evaluate-essay
+// Deploy: supabase functions deploy evaluate-essay evaluate-eo  (both — they
+// share supabase/functions/_shared/evalHelpers.ts)
 // Secret:  supabase secrets set GEMINI_API_KEY=...   (free key from aistudio.google.com)
 //
 // This function is the ONLY place the Gemini key is used. The React app
 // never sees it — it calls this function via supabase.functions.invoke().
+//
+// ARCHITECTURE NOTE (why this looks different from a typical edge function):
+// The whole Gemini round-trip used to happen inside the request the client
+// awaits, which produced 504 Gateway Timeouts once it ran past the
+// platform's ~150s limit, and gave students no way to know a slow/failed
+// call was even happening. This version responds in well under a second
+// (as soon as the submission is marked "evaluating") and does the actual
+// evaluation in the background via EdgeRuntime.waitUntil, writing the
+// result (or a clear error) to the database and a notification row for
+// the client to pick up. See _shared/evalHelpers.ts for the quota-aware
+// retry policy — 429 (daily free-tier quota) is never retried, since
+// retrying only burns more of the same limited quota.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { callGeminiWithPolicy, findActiveEvaluation, friendlyEvalErrorMessage } from '../_shared/evalHelpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,11 +51,6 @@ Exigences structurelles à vérifier STRICTEMENT — c'est la tâche la plus tec
 - Vérifier que le total Partie 1 + Partie 2 respecte 120-180 mots ET que chaque partie respecte individuellement sa fourchette (40-60 puis 80-120) — un déséquilibre entre les deux parties est une faiblesse réelle à l'examen.`,
 }
 
-// Official EE/EO (/20 scale) → CECR level, verified against the Ministère
-// de l'Immigration du Québec's TCF Canada correspondence table and France
-// Compétences' TCF IRN barème. Computed here rather than trusted from the
-// model's own guess, so the label is always exactly right regardless of
-// what the LLM outputs.
 function eeEoScoreToCecr(score: number): string {
   if (score >= 18) return 'C2'
   if (score >= 14) return 'C1'
@@ -93,12 +102,6 @@ Retourne UNIQUEMENT un objet JSON valide (aucun texte avant/après, aucun markdo
 estimated_score est sur 20, aligné sur le barème officiel TCF Canada EE. Sois précis, technique, et exigeant — pas complaisant.`
 }
 
-// See evaluate-eo/index.ts for why this is necessary: responseMimeType
-// alone doesn't guarantee Gemini escapes quotes/newlines correctly inside
-// long free-text fields (corrected_version, model_answer, mistakes[].*).
-// responseSchema switches Gemini into structured-output mode, which is
-// far more reliable than hoping a prompt instruction produces parseable
-// JSON on every call.
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -138,30 +141,97 @@ const RESPONSE_SCHEMA = {
     recommendations: { type: 'STRING' },
   },
   required: [
-    'cefr_level',
-    'estimated_score',
-    'grammar_feedback',
-    'vocabulary_feedback',
-    'organization_feedback',
-    'task_achievement_feedback',
-    'mistakes',
-    'corrected_version',
-    'model_answer',
-    'vocabulary_suggestions',
-    'recommendations',
+    'cefr_level', 'estimated_score', 'grammar_feedback', 'vocabulary_feedback',
+    'organization_feedback', 'task_achievement_feedback', 'mistakes',
+    'corrected_version', 'model_answer', 'vocabulary_suggestions', 'recommendations',
   ],
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+/** The actual Gemini call + persistence, run in the background AFTER the
+ * client already has its 202 response. Never throws — every path either
+ * writes an 'evaluated' or an 'error' row plus a notification. */
+async function runEvaluationInBackground(admin, { submissionId, userId, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, geminiKey }) {
+  const linkPath = `/ee/${sujetNumber}`
+  try {
+    const wordCount = essay.trim().split(/\s+/).filter(Boolean).length
+    const systemPrompt = buildSystemPrompt(Number(taskType), Number(minWords), Number(maxWords))
+
+    const result = await callGeminiWithPolicy(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,
+      {
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [
+          {
+            role: 'user',
+            parts: [{
+              text: `Sujet EE #${topicNumber} (${wordCount} mots comptés automatiquement dans le texte du candidat) :\n"""${prompt}"""\n\nTexte du candidat à évaluer:\n"""${essay}"""`,
+            }],
+          },
+        ],
+        generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
+      }
+    )
+
+    if (!result.ok) {
+      const friendly = friendlyEvalErrorMessage(result.kind, result.rawText)
+      console.error('evaluate-essay: Gemini failed, kind=', result.kind, result.rawText)
+      await admin.from('ee_submissions').update({ status: 'error', error_message: friendly }).eq('id', submissionId)
+      await admin.from('notifications').insert({
+        user_id: userId, type: 'eval_error', title: `Sujet EE ${sujetNumber} — échec de l'évaluation`, body: friendly, link: linkPath,
+      })
+      return
+    }
+
+    const rawText = result.json.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!rawText) throw new Error('Gemini returned no content')
+    const parsed = JSON.parse(rawText)
+
+    const { error: insertErr } = await admin.from('ai_feedback').insert({
+      submission_id: submissionId,
+      user_id: userId,
+      cefr_level: eeEoScoreToCecr(Number(parsed.estimated_score)),
+      estimated_score: parsed.estimated_score,
+      grammar_feedback: parsed.grammar_feedback,
+      vocabulary_feedback: parsed.vocabulary_feedback,
+      organization_feedback: parsed.organization_feedback,
+      task_achievement_feedback: parsed.task_achievement_feedback,
+      mistakes: parsed.mistakes ?? [],
+      corrected_version: parsed.corrected_version,
+      model_answer: parsed.model_answer,
+      vocabulary_suggestions: parsed.vocabulary_suggestions ?? [],
+      recommendations: parsed.recommendations,
+      raw_response: parsed,
+    })
+    if (insertErr) throw insertErr
+
+    await admin.from('ee_submissions')
+      .update({ status: 'evaluated', final_content: essay, submitted_at: new Date().toISOString() })
+      .eq('id', submissionId)
+
+    await admin.from('notifications').insert({
+      user_id: userId,
+      type: 'eval_success',
+      title: `Sujet EE ${sujetNumber} — résultats disponibles`,
+      body: `Ta correction est prête : ${parsed.estimated_score}/20 (${eeEoScoreToCecr(Number(parsed.estimated_score))}).`,
+      link: linkPath,
+    })
+  } catch (err) {
+    console.error('evaluate-essay background error:', err.message, err.stack)
+    const friendly = friendlyEvalErrorMessage('other', err.message)
+    await admin.from('ee_submissions').update({ status: 'error', error_message: friendly }).eq('id', submissionId)
+    await admin.from('notifications').insert({
+      user_id: userId, type: 'eval_error', title: `Sujet EE ${sujetNumber} — échec de l'évaluation`, body: friendly, link: linkPath,
+    })
   }
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing Authorization header')
 
-    // Verify the calling user with the anon key + their JWT (RLS-safe)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -169,112 +239,52 @@ serve(async (req) => {
     )
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) throw new Error(`Unauthorized: ${userErr?.message ?? 'no user'}`)
-    console.log('evaluate-essay: authenticated user', user.id)
 
-    const {
-      submissionId,
-      prompt,
-      essay,
-      topicNumber,
-      taskType = 1,
-      minWords = 60,
-      maxWords = 120,
-    } = await req.json()
-    if (!essay || essay.trim().length < 20) {
-      throw new Error('Essay is too short to evaluate')
-    }
-
-    const wordCount = essay.trim().split(/\s+/).filter(Boolean).length
-    const systemPrompt = buildSystemPrompt(Number(taskType), Number(minWords), Number(maxWords))
+    const { submissionId, prompt, essay, topicNumber, taskType = 1, minWords = 60, maxWords = 120 } = await req.json()
+    if (!essay || essay.trim().length < 20) throw new Error('Essay is too short to evaluate')
 
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiKey) throw new Error('GEMINI_API_KEY secret is not set on this Edge Function')
 
-    console.log('evaluate-essay: calling Gemini, wordCount=', wordCount, 'taskType=', taskType)
+    const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `Sujet EE #${topicNumber} (${wordCount} mots comptés automatiquement dans le texte du candidat) :\n"""${prompt}"""\n\nTexte du candidat à évaluer:\n"""${essay}"""`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: 'application/json',
-            responseSchema: RESPONSE_SCHEMA,
-          },
+    const sujetNumber = Math.floor(Number(topicNumber) / 10)
+
+    // Refuse to start a second evaluation while a DIFFERENT sujet is
+    // already in flight — this is the actual fix for "a stuck sujet keeps
+    // using my quota": without this, every new submission (or every
+    // retry) fires another Gemini call on top of an already-running one,
+    // against the same small daily quota. This sujet's own other tasks
+    // (submitted together in the same click) are explicitly excluded.
+    const active = await findActiveEvaluation(admin, user.id, 'EE', sujetNumber)
+    if (active) {
+      return new Response(
+        JSON.stringify({
+          error: `Une correction ${active.kind} est déjà en cours (sujet ${active.sujetNumber}). Attends qu'elle se termine avant d'en soumettre une nouvelle.`,
+          lockedSujet: active,
         }),
-      }
-    )
-
-    console.log('evaluate-essay: Gemini responded with status', geminiRes.status)
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      throw new Error(`Gemini API error: ${errText}`)
-    }
-
-    const completion = await geminiRes.json()
-    const rawText = completion.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!rawText) throw new Error('Gemini returned no content: ' + JSON.stringify(completion))
-    let parsed
-    try {
-      parsed = JSON.parse(rawText)
-    } catch (parseErr) {
-      throw new Error(
-        `Gemini response was not valid JSON despite responseSchema (${parseErr.message}). First 300 chars: ${rawText.slice(0, 300)}`
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
       )
     }
 
-    // Persist feedback with the service role (bypasses RLS, but we already
-    // verified the caller owns this user_id above).
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const { data: feedback, error: insertErr } = await admin
-      .from('ai_feedback')
-      .insert({
-        submission_id: submissionId,
-        user_id: user.id,
-        cefr_level: eeEoScoreToCecr(Number(parsed.estimated_score)),
-        estimated_score: parsed.estimated_score,
-        grammar_feedback: parsed.grammar_feedback,
-        vocabulary_feedback: parsed.vocabulary_feedback,
-        organization_feedback: parsed.organization_feedback,
-        task_achievement_feedback: parsed.task_achievement_feedback,
-        mistakes: parsed.mistakes ?? [],
-        corrected_version: parsed.corrected_version,
-        model_answer: parsed.model_answer,
-        vocabulary_suggestions: parsed.vocabulary_suggestions ?? [],
-        recommendations: parsed.recommendations,
-        raw_response: parsed,
-      })
-      .select()
-      .single()
-
-    if (insertErr) throw insertErr
-
-    await admin
-      .from('ee_submissions')
-      .update({ status: 'evaluated', final_content: essay, submitted_at: new Date().toISOString() })
+    await admin.from('ee_submissions')
+      .update({ status: 'evaluating', evaluation_started_at: new Date().toISOString(), error_message: null })
       .eq('id', submissionId)
 
-    return new Response(JSON.stringify({ feedback }), {
+    const backgroundTask = runEvaluationInBackground(admin, {
+      submissionId, userId: user.id, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, geminiKey,
+    })
+    // deno-lint-ignore no-explicit-any
+    const runtime = globalThis as any
+    if (runtime.EdgeRuntime?.waitUntil) {
+      runtime.EdgeRuntime.waitUntil(backgroundTask)
+    } else {
+      backgroundTask.catch((e) => console.error('background task error (no waitUntil):', e))
+    }
+
+    return new Response(JSON.stringify({ status: 'accepted', submissionId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: 202,
     })
   } catch (err) {
     console.error('evaluate-essay error:', err.message, err.stack)

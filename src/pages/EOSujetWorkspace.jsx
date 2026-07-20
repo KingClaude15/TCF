@@ -2,12 +2,14 @@ import { toastError } from '../lib/errorMessages'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw, Clock, AlertTriangle, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { getEoSujetByNumber, eoSujetToTasks, encodeTopicNumber } from '../services/sujetsService'
 import { getEoSubmission, saveDraftRecording, submitRecording, retakeEoSujet } from '../services/eoService'
 import { markDayModule, getActiveDay } from '../services/progressService'
+import { getActiveEvaluation } from '../services/evaluationLockService'
+import { subscribeToNotifications } from '../services/notificationsService'
 import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AudioRecorder from '../components/eo/AudioRecorder'
 import EoFeedbackPanel from '../components/eo/EoFeedbackPanel'
@@ -24,29 +26,31 @@ export default function EOSujetWorkspace() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(0)
-  const [recordings, setRecordings] = useState({}) // step -> { blob, durationSeconds }
-  const [existingAudioUrls, setExistingAudioUrls] = useState({}) // step -> signed URL (already-uploaded draft or submitted attempt)
-  const [draftAudioPaths, setDraftAudioPaths] = useState({}) // step -> raw storage path, so a refresh can finalize without re-recording
-  const [savingDraft, setSavingDraft] = useState({}) // step -> boolean, brief "saving..." indicator
+  const [recordings, setRecordings] = useState({})
+  const [existingAudioUrls, setExistingAudioUrls] = useState({})
+  const [draftAudioPaths, setDraftAudioPaths] = useState({})
+  const [savingDraft, setSavingDraft] = useState({})
   const [feedbacks, setFeedbacks] = useState({})
+  const [taskStatuses, setTaskStatuses] = useState({}) // step -> 'draft'|'submitted'|'evaluating'|'evaluated'|'error'
+  const [taskErrors, setTaskErrors] = useState({}) // step -> error_message
   const [submittingAll, setSubmittingAll] = useState(false)
-  const [phase, setPhase] = useState('recording') // 'recording' | 'results' | 'closed-empty'
+  const [phase, setPhase] = useState('recording') // 'recording' | 'pending' | 'results' | 'closed-empty'
   const [expired, setExpired] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [retaking, setRetaking] = useState(false)
   const [previousScores, setPreviousScores] = useState({})
-  const [prepDone, setPrepDone] = useState(new Set()) // steps whose prep countdown has finished/been skipped
+  const [prepDone, setPrepDone] = useState(new Set())
   const [prepRemaining, setPrepRemaining] = useState(0)
-  const [notes, setNotes] = useState({}) // step -> scratch notes typed during prep (local only, never submitted)
+  const [notes, setNotes] = useState({})
+  const [otherLock, setOtherLock] = useState(null)
 
   const timerKey = user ? `eo_timer_sujet_${user.id}_${sujetNumber}` : null
-  const blobUrlCacheRef = useRef({}) // step -> object URL created from an in-memory blob, cached to avoid recreation/leaks
+  const blobUrlCacheRef = useRef({})
+  const submitLockRef = useRef(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setPreviousScores({})
-    // Release any cached preview URLs from a previously-loaded sujet before
-    // fetching this one's data.
     Object.values(blobUrlCacheRef.current).forEach((url) => URL.revokeObjectURL(url))
     blobUrlCacheRef.current = {}
     try {
@@ -65,9 +69,13 @@ export default function EOSujetWorkspace() {
       const nextUrls = {}
       const nextDraftPaths = {}
       const nextFeedback = {}
+      const nextStatuses = {}
+      const nextErrors = {}
       for (let i = 0; i < existing.length; i++) {
         const sub = existing[i]
         if (!sub) continue
+        nextStatuses[i] = sub.status
+        if (sub.error_message) nextErrors[i] = sub.error_message
         if (sub.audio_path) {
           const { data } = await supabase.storage.from(BUCKET).createSignedUrl(sub.audio_path, 60 * 30)
           if (data) nextUrls[i] = data.signedUrl
@@ -78,10 +86,15 @@ export default function EOSujetWorkspace() {
       setExistingAudioUrls(nextUrls)
       setDraftAudioPaths(nextDraftPaths)
       setFeedbacks(nextFeedback)
+      setTaskStatuses(nextStatuses)
+      setTaskErrors(nextErrors)
       setRecordings({})
 
+      const anyEvaluating = taskList.some((_, i) => nextStatuses[i] === 'evaluating')
       if (taskList.length > 0 && taskList.every((_, i) => nextFeedback[i])) {
         setPhase('results')
+      } else if (anyEvaluating) {
+        setPhase('pending')
       } else {
         setPhase('recording')
       }
@@ -89,6 +102,9 @@ export default function EOSujetWorkspace() {
       setPrepDone(new Set())
       setPrepRemaining(0)
       if (timerKey) clearExamTimer(timerKey)
+
+      const lock = await getActiveEvaluation(user.id, 'EO', Number(sujetNumber))
+      setOtherLock(lock)
     } finally {
       setLoading(false)
     }
@@ -98,13 +114,19 @@ export default function EOSujetWorkspace() {
     load()
   }, [load])
 
+  useEffect(() => {
+    if (phase !== 'pending' || !user) return
+    const unsubscribe = subscribeToNotifications(user.id, (notif) => {
+      if (notif.link === `/eo/${sujetNumber}`) load()
+    })
+    return unsubscribe
+  }, [phase, user, sujetNumber, load])
+
   const task = tasks[step]
   const examDurationSeconds =
     tasks.reduce((sum, t) => sum + (t.maxSeconds || 0) + (t.prepSeconds || 0), 0) || 12 * 60
   const inPrep = task && task.prepSeconds > 0 && !prepDone.has(step)
 
-  // Starts (or restarts) the prep countdown whenever the student lands on a
-  // task that requires preparation and hasn't finished prepping it yet.
   useEffect(() => {
     if (!inPrep) return
     setPrepRemaining(task.prepSeconds)
@@ -134,9 +156,6 @@ export default function EOSujetWorkspace() {
     setRecordings((r) => ({ ...r, [step]: { blob, durationSeconds } }))
     setHasStarted(true)
 
-    // Persist immediately in the background — this is what makes the
-    // recording survive a page refresh. Recording locally in the UI never
-    // waits on this; it's fire-and-forget with a soft failure toast.
     const currentStep = step
     const currentTask = tasks[currentStep]
     if (!currentTask) return
@@ -153,7 +172,7 @@ export default function EOSujetWorkspace() {
           durationSeconds,
         })
         setDraftAudioPaths((p) => ({ ...p, [currentStep]: saved.audio_path }))
-      } catch (err) {
+      } catch {
         toast.error(`Échec de la sauvegarde automatique (${currentTask.taskLabel}) — réessaie si tu rafraîchis la page.`)
       } finally {
         setSavingDraft((s) => ({ ...s, [currentStep]: false }))
@@ -161,10 +180,6 @@ export default function EOSujetWorkspace() {
     })()
   }
 
-  // The preview URL AudioRecorder should show for the *current* step:
-  // prefer the in-memory blob just recorded this session (cached to avoid
-  // recreating object URLs on every render), otherwise fall back to a
-  // previously-uploaded draft/submission fetched from storage.
   function getExistingUrlForStep(stepIndex) {
     const rec = recordings[stepIndex]
     if (rec?.blob) {
@@ -185,39 +200,60 @@ export default function EOSujetWorkspace() {
 
   const handleSubmitAll = useCallback(
     async (auto = false) => {
+      if (submitLockRef.current) return
+
+      const lock = await getActiveEvaluation(user.id, 'EO', Number(sujetNumber))
+      if (lock) {
+        setOtherLock(lock)
+        if (!auto) {
+          toast.error(`Une correction ${lock.kind} est déjà en cours (sujet ${lock.sujetNumber}). Attends qu'elle se termine.`)
+        }
+        return
+      }
+
+      submitLockRef.current = true
       setSubmittingAll(true)
       try {
         const dayNumber = await getActiveDay(user.id)
-        const nextFeedback = { ...feedbacks }
-        const nextUrls = { ...existingAudioUrls }
         let anySubmitted = false
+        const nextStatuses = { ...taskStatuses }
+        const nextErrors = { ...taskErrors }
+        const nextUrls = { ...existingAudioUrls }
 
         for (let i = 0; i < tasks.length; i++) {
           const t = tasks[i]
           const rec = recordings[i]
-          if (nextFeedback[i]) {
+          if (feedbacks[i] || taskStatuses[i] === 'evaluating') {
             anySubmitted = true
-            continue // already evaluated in a previous sitting
+            continue // already evaluated, or already submitted and awaiting this exact task
           }
           const existingPath = draftAudioPaths[i]
           if (!rec?.blob && !existingPath) continue // nothing recorded for this tâche — skip it
 
-          const feedback = await submitRecording({
-            userId: user.id,
-            topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
-            prompt: t.prompt,
-            taskType: t.taskType,
-            dayNumber,
-            audioBlob: rec?.blob,
-            durationSeconds: rec?.durationSeconds,
-            existingAudioPath: rec?.blob ? undefined : existingPath,
-          })
-          nextFeedback[i] = feedback
-          if (rec?.blob) nextUrls[i] = URL.createObjectURL(rec.blob)
-          anySubmitted = true
+          try {
+            await submitRecording({
+              userId: user.id,
+              topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
+              prompt: t.prompt,
+              taskType: t.taskType,
+              dayNumber,
+              audioBlob: rec?.blob,
+              durationSeconds: rec?.durationSeconds,
+              existingAudioPath: rec?.blob ? undefined : existingPath,
+            })
+            nextStatuses[i] = 'evaluating'
+            delete nextErrors[i]
+            if (rec?.blob) nextUrls[i] = URL.createObjectURL(rec.blob)
+            anySubmitted = true
+          } catch (taskErr) {
+            toastError(taskErr, `Échec de soumission — ${t.taskLabel}`)
+            nextErrors[i] = taskErr.message
+            break
+          }
         }
 
-        setFeedbacks(nextFeedback)
+        setTaskStatuses(nextStatuses)
+        setTaskErrors(nextErrors)
         setExistingAudioUrls(nextUrls)
         clearExamTimer(timerKey)
 
@@ -226,16 +262,21 @@ export default function EOSujetWorkspace() {
         } else {
           await markDayModule(user.id, dayNumber, 'eo_done')
           setRecordings({})
-          setPhase('results')
-          toast.success(auto ? 'Temps écoulé — sujet soumis automatiquement.' : 'Sujet soumis et évalué !')
+          setPhase('pending')
+          toast.success(
+            auto
+              ? 'Temps écoulé — sujet soumis automatiquement. Tu seras notifié(e) dès que les corrections seront prêtes.'
+              : 'Sujet soumis ! Tu seras notifié(e) dès que les corrections seront prêtes.'
+          )
         }
       } catch (err) {
         toastError(err, 'Erreur lors de la soumission EO')
       } finally {
+        submitLockRef.current = false
         setSubmittingAll(false)
       }
     },
-    [tasks, recordings, feedbacks, existingAudioUrls, draftAudioPaths, sujetNumber, timerKey, user]
+    [tasks, recordings, feedbacks, taskStatuses, taskErrors, existingAudioUrls, draftAudioPaths, sujetNumber, timerKey, user]
   )
 
   function handleExpire() {
@@ -263,6 +304,8 @@ export default function EOSujetWorkspace() {
       Object.values(blobUrlCacheRef.current).forEach((url) => URL.revokeObjectURL(url))
       blobUrlCacheRef.current = {}
       setFeedbacks({})
+      setTaskStatuses({})
+      setTaskErrors({})
       setExpired(false)
       setHasStarted(false)
       setPrepDone(new Set())
@@ -284,6 +327,31 @@ export default function EOSujetWorkspace() {
       <div className="card p-8 text-center">
         <p className="text-sm text-slate-500">Sujet introuvable.</p>
         <Link to="/eo" className="btn-primary mt-4 inline-flex">Retour</Link>
+      </div>
+    )
+  }
+
+  // ---- Pending view ----
+  if (phase === 'pending') {
+    return (
+      <div className="space-y-6">
+        <button onClick={() => navigate('/eo')} className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600">
+          <ArrowLeft size={16} /> Retour aux sujets
+        </button>
+
+        <div className="card flex flex-col items-center gap-4 p-10 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
+            <Clock size={28} className="animate-pulse" />
+          </div>
+          <div>
+            <h2 className="font-heading text-lg font-bold">Correction en cours</h2>
+            <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
+              Ton sujet {sujet.sujet_number} a bien été soumis. L'IA transcrit et évalue tes enregistrements — cela peut prendre une à deux minutes.
+              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts.
+            </p>
+          </div>
+          <Link to="/eo" className="btn-primary">Retour aux sujets EO</Link>
+        </div>
       </div>
     )
   }
@@ -359,6 +427,8 @@ export default function EOSujetWorkspace() {
   }
 
   // ---- Recording view ----
+  const hasFailedTasks = Object.keys(taskErrors).length > 0
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -373,6 +443,38 @@ export default function EOSujetWorkspace() {
         )}
       </div>
 
+      {otherLock && (
+        <div className="card flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          <Lock size={18} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Une autre correction est en cours</p>
+            <p className="mt-0.5">
+              Le sujet {otherLock.kind} {otherLock.sujetNumber} est encore en cours d'évaluation. Pour ne pas gaspiller le quota IA partagé,
+              termine ou attends cette correction avant de soumettre un nouveau sujet.
+            </p>
+            <Link to={otherLock.link} className="mt-1.5 inline-block font-semibold underline">
+              Voir ce sujet →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {hasFailedTasks && (
+        <div className="card space-y-1.5 border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <AlertTriangle size={16} /> Une ou plusieurs tâches n'ont pas pu être évaluées
+          </p>
+          {tasks.map((t, i) =>
+            taskErrors[i] ? (
+              <p key={t.taskType} className="text-xs">
+                <span className="font-semibold">{t.taskLabel} :</span> {taskErrors[i]}
+              </p>
+            ) : null
+          )}
+          <p className="text-xs">Ton enregistrement a été conservé — tu peux réessayer avec le bouton ci-dessous.</p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         {tasks.map((t, i) => (
           <button
@@ -385,7 +487,8 @@ export default function EOSujetWorkspace() {
             }`}
           >
             {t.taskLabel}
-            {(recordings[i]?.blob || draftAudioPaths[i] || feedbacks[i]) && <span className="ml-1 text-amber-500">●</span>}
+            {taskErrors[i] && <span className="ml-1 text-red-500">!</span>}
+            {!taskErrors[i] && (recordings[i]?.blob || draftAudioPaths[i] || feedbacks[i]) && <span className="ml-1 text-amber-500">●</span>}
           </button>
         ))}
       </div>
@@ -447,12 +550,12 @@ export default function EOSujetWorkspace() {
         </>
       )}
 
-      <button onClick={() => handleSubmitAll(false)} disabled={submittingAll} className="btn-primary w-full">
+      <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock} className="btn-primary w-full">
         {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-        {submittingAll ? 'Évaluation des 3 tâches en cours...' : 'Soumettre le sujet (3 tâches)'}
+        {submittingAll ? 'Envoi en cours...' : otherLock ? 'Une autre correction est en cours' : 'Soumettre le sujet (3 tâches)'}
       </button>
       <p className="text-center text-xs text-slate-400">
-        La soumission envoie et évalue les tâches enregistrées, puis clôture ce sujet.
+        La soumission envoie les enregistrements à l'IA puis clôture ce sujet. Les résultats arrivent par notification.
       </p>
     </div>
   )

@@ -44,16 +44,31 @@ export async function saveDraft(userId, { topicNumber, prompt, draftContent, day
 }
 
 /**
- * Submits the essay to the `evaluate-essay` Supabase Edge Function, which
- * securely calls OpenAI server-side and writes the ai_feedback row.
+ * Kicks off evaluation via the `evaluate-essay` Supabase Edge Function.
+ * The function responds almost immediately with { status: 'accepted' } —
+ * the actual Gemini call + feedback write happens in the background, so
+ * this does NOT return feedback. The result shows up later as a
+ * notification (see notificationsService) and by reloading the submission.
+ *
+ * Throws with a specific, user-readable message if another evaluation is
+ * already in progress for this user (HTTP 409 — see evalHelpers.ts).
  */
 export async function submitForEvaluation({ submissionId, prompt, essay, topicNumber, taskType, minWords, maxWords }) {
   const { data, error } = await supabase.functions.invoke('evaluate-essay', {
     body: { submissionId, prompt, essay, topicNumber, taskType, minWords, maxWords },
   })
-  if (error) throw error
+  if (error) {
+    let message = error.message
+    try {
+      const body = await error.context?.json()
+      if (body?.error) message = body.error
+    } catch {
+      // response wasn't JSON — fall back to the generic error message
+    }
+    throw new Error(message)
+  }
   if (data?.error) throw new Error(data.error)
-  return data.feedback
+  return data // { status: 'accepted', submissionId }
 }
 
 export function computeAverageEeScore(submissions) {

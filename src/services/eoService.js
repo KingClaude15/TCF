@@ -63,10 +63,11 @@ export async function saveDraftRecording({ userId, topicNumber, prompt, dayNumbe
 }
 
 /**
- * Saves the recording and immediately submits it for AI evaluation via the
- * `evaluate-eo` Edge Function, which transcribes + scores it server-side.
- * If `existingAudioPath` is provided (a draft already uploaded earlier —
- * e.g. before a page refresh), it's reused instead of re-uploading the blob.
+ * Uploads the recording and kicks off evaluation via the `evaluate-eo`
+ * Edge Function, which responds almost immediately with
+ * { status: 'accepted' } — the actual transcription + scoring happens in
+ * the background. See submitForEvaluation in eeService.js for the same
+ * pattern and why it changed.
  */
 export async function submitRecording({
   userId,
@@ -113,9 +114,18 @@ export async function submitRecording({
       taskType,
     },
   })
-  if (error) throw error
+  if (error) {
+    let message = error.message
+    try {
+      const body = await error.context?.json()
+      if (body?.error) message = body.error
+    } catch {
+      // response wasn't JSON — fall back to the generic error message
+    }
+    throw new Error(message)
+  }
   if (data?.error) throw new Error(data.error)
-  return data.feedback
+  return data // { status: 'accepted', submissionId }
 }
 
 export function computeAverageEoScore(submissions) {
