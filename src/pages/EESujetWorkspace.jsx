@@ -151,12 +151,26 @@ export default function EESujetWorkspace() {
     [tasks, sujetNumber, user]
   )
 
+  // Refs mirror the latest step/text so the autosave interval below can be
+  // set up ONCE (empty deps) instead of depending on `texts`, which changes
+  // on every keystroke. Depending on `texts` was the bug: it tore down and
+  // recreated the interval on every keystroke, so the 10s timer could never
+  // actually complete while someone was actively typing — meaning autosave
+  // effectively never fired during writing, and a refresh mid-session lost
+  // the draft entirely.
+  const stepRef = useRef(step)
+  const textsRef = useRef(texts)
+  useEffect(() => {
+    stepRef.current = step
+    textsRef.current = texts
+  }, [step, texts])
+
   useEffect(() => {
     const interval = setInterval(() => {
-      if (dirtyRef.current && phase === 'writing') persistDraft(step, texts[step])
+      if (dirtyRef.current && phase === 'writing') persistDraft(stepRef.current, textsRef.current[stepRef.current])
     }, AUTOSAVE_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [persistDraft, step, texts, phase])
+  }, [persistDraft, phase])
 
   function updateText(value) {
     setTexts((t) => ({ ...t, [step]: value }))
@@ -168,6 +182,29 @@ export default function EESujetWorkspace() {
     if (dirtyRef.current) persistDraft(step, texts[step])
     setStep(newStep)
   }
+
+  // Extra safety nets beyond the 10s interval: flush the draft the moment
+  // the textarea loses focus, and again if the tab is hidden or the page
+  // is about to unload (covers closing the tab, switching apps, or an
+  // accidental refresh right after typing).
+  function handleTextareaBlur() {
+    if (dirtyRef.current) persistDraft(step, texts[step])
+  }
+
+  useEffect(() => {
+    function flushIfDirty() {
+      if (dirtyRef.current && phase === 'writing') persistDraft(stepRef.current, textsRef.current[stepRef.current])
+    }
+    function onVisibilityChange() {
+      if (document.hidden) flushIfDirty()
+    }
+    window.addEventListener('beforeunload', flushIfDirty)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('beforeunload', flushIfDirty)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [persistDraft, phase])
 
   const handleSubmitAll = useCallback(
     async (auto = false) => {
@@ -326,8 +363,9 @@ export default function EESujetWorkspace() {
           <div>
             <h2 className="font-heading text-lg font-bold">Correction en cours</h2>
             <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Ton sujet {sujet.sujet_number} a bien été soumis. L'IA évalue tes réponses — cela peut prendre une à deux minutes.
-              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts.
+              Ton sujet {sujet.sujet_number} a bien été soumis. L'IA évalue tes réponses — cela prend généralement moins de 5 minutes.
+              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts. Tu peux fermer
+              cette page ou continuer autre chose en attendant.
             </p>
           </div>
           <Link to="/ee" className="btn-primary">Retour aux sujets EE</Link>
@@ -494,6 +532,7 @@ export default function EESujetWorkspace() {
               ref={textareaRef}
               value={texts[step] || ''}
               onChange={(e) => updateText(e.target.value)}
+              onBlur={handleTextareaBlur}
               rows={14}
               disabled={submittingAll}
               className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed focus:outline-none disabled:opacity-60"

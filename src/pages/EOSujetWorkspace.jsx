@@ -346,8 +346,9 @@ export default function EOSujetWorkspace() {
           <div>
             <h2 className="font-heading text-lg font-bold">Correction en cours</h2>
             <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Ton sujet {sujet.sujet_number} a bien été soumis. L'IA transcrit et évalue tes enregistrements — cela peut prendre une à deux minutes.
-              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts.
+              Ton sujet {sujet.sujet_number} a bien été soumis. L'IA transcrit et évalue tes enregistrements — cela prend généralement
+              moins de 5 minutes. Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront
+              prêts. Tu peux fermer cette page ou continuer autre chose en attendant.
             </p>
           </div>
           <Link to="/eo" className="btn-primary">Retour aux sujets EO</Link>
