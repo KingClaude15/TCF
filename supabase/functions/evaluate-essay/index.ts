@@ -1,26 +1,34 @@
 // Supabase Edge Function: evaluate-essay
 // Deploy: supabase functions deploy evaluate-essay evaluate-eo  (both — they
 // share supabase/functions/_shared/evalHelpers.ts)
-// Secret:  supabase secrets set GEMINI_API_KEY=...   (free key from aistudio.google.com)
+// Secrets: supabase secrets set GROQ_API_KEY=...    (free, no card — console.groq.com/keys)
+//          supabase secrets set GEMINI_API_KEY=...  (free — aistudio.google.com)
 //
-// This function is the ONLY place the Gemini key is used. The React app
-// never sees it — it calls this function via supabase.functions.invoke().
+// This function is the ONLY place these keys are used. The React app
+// never sees them — it calls this function via supabase.functions.invoke().
+//
+// PROVIDER STRATEGY: Groq (llama-3.3-70b-versatile) is tried first — its
+// free tier is more generous for this workload and, more importantly, is
+// a completely independent quota from Gemini's. If Groq is rate-limited,
+// overloaded, or errors for any reason, this function automatically falls
+// back to Gemini. A submission only fails outright if BOTH providers are
+// exhausted/down at the same moment — see gradeTextWithFallback() in
+// _shared/evalHelpers.ts. Either GROQ_API_KEY or GEMINI_API_KEY alone is
+// enough for the function to work; having both just adds resilience.
 //
 // ARCHITECTURE NOTE (why this looks different from a typical edge function):
-// The whole Gemini round-trip used to happen inside the request the client
+// The whole grading round-trip used to happen inside the request the client
 // awaits, which produced 504 Gateway Timeouts once it ran past the
 // platform's ~150s limit, and gave students no way to know a slow/failed
 // call was even happening. This version responds in well under a second
 // (as soon as the submission is marked "evaluating") and does the actual
 // evaluation in the background via EdgeRuntime.waitUntil, writing the
 // result (or a clear error) to the database and a notification row for
-// the client to pick up. See _shared/evalHelpers.ts for the quota-aware
-// retry policy — 429 (daily free-tier quota) is never retried, since
-// retrying only burns more of the same limited quota.
+// the client to pick up.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { callGeminiWithPolicy, findActiveEvaluation, friendlyEvalErrorMessage } from '../_shared/evalHelpers.ts'
+import { gradeTextWithFallback, findActiveEvaluation, friendlyEvalErrorMessage } from '../_shared/evalHelpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -150,31 +158,25 @@ const RESPONSE_SCHEMA = {
 /** The actual Gemini call + persistence, run in the background AFTER the
  * client already has its 202 response. Never throws — every path either
  * writes an 'evaluated' or an 'error' row plus a notification. */
-async function runEvaluationInBackground(admin, { submissionId, userId, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, geminiKey }) {
+async function runEvaluationInBackground(admin, { submissionId, userId, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, groqKey, geminiKey }) {
   const linkPath = `/ee/${sujetNumber}`
   try {
     const wordCount = essay.trim().split(/\s+/).filter(Boolean).length
     const systemPrompt = buildSystemPrompt(Number(taskType), Number(minWords), Number(maxWords))
+    const userText = `Sujet EE #${topicNumber} (${wordCount} mots comptés automatiquement dans le texte du candidat) :\n"""${prompt}"""\n\nTexte du candidat à évaluer:\n"""${essay}"""`
 
-    const result = await callGeminiWithPolicy(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,
-      {
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [
-          {
-            role: 'user',
-            parts: [{
-              text: `Sujet EE #${topicNumber} (${wordCount} mots comptés automatiquement dans le texte du candidat) :\n"""${prompt}"""\n\nTexte du candidat à évaluer:\n"""${essay}"""`,
-            }],
-          },
-        ],
-        generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
-      }
-    )
+    const result = await gradeTextWithFallback({
+      systemPrompt,
+      userText,
+      groqKey,
+      geminiKey,
+      geminiUrl: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,
+      responseSchema: RESPONSE_SCHEMA,
+    })
 
     if (!result.ok) {
       const friendly = friendlyEvalErrorMessage(result.kind, result.rawText)
-      console.error('evaluate-essay: Gemini failed, kind=', result.kind, result.rawText)
+      console.error('evaluate-essay: both providers failed, kind=', result.kind, result.rawText)
       await admin.from('ee_submissions').update({ status: 'error', error_message: friendly }).eq('id', submissionId)
       await admin.from('notifications').insert({
         user_id: userId, type: 'eval_error', title: `Sujet EE ${sujetNumber} — échec de l'évaluation`, body: friendly, link: linkPath,
@@ -182,9 +184,8 @@ async function runEvaluationInBackground(admin, { submissionId, userId, sujetNum
       return
     }
 
-    const rawText = result.json.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!rawText) throw new Error('Gemini returned no content')
-    const parsed = JSON.parse(rawText)
+    const parsed = result.parsed
+    console.log('evaluate-essay: graded via', result.provider, 'for submission', submissionId)
 
     const { error: insertErr } = await admin.from('ai_feedback').insert({
       submission_id: submissionId,
@@ -243,8 +244,11 @@ serve(async (req) => {
     const { submissionId, prompt, essay, topicNumber, taskType = 1, minWords = 60, maxWords = 120 } = await req.json()
     if (!essay || essay.trim().length < 20) throw new Error('Essay is too short to evaluate')
 
+    const groqKey = Deno.env.get('GROQ_API_KEY')
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiKey) throw new Error('GEMINI_API_KEY secret is not set on this Edge Function')
+    if (!groqKey && !geminiKey) {
+      throw new Error('No AI provider configured: set GROQ_API_KEY and/or GEMINI_API_KEY as Edge Function secrets')
+    }
 
     const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
@@ -272,7 +276,7 @@ serve(async (req) => {
       .eq('id', submissionId)
 
     const backgroundTask = runEvaluationInBackground(admin, {
-      submissionId, userId: user.id, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, geminiKey,
+      submissionId, userId: user.id, sujetNumber, prompt, essay, topicNumber, taskType, minWords, maxWords, groqKey, geminiKey,
     })
     // deno-lint-ignore no-explicit-any
     const runtime = globalThis as any

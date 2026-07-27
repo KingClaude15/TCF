@@ -66,9 +66,150 @@ export async function callGeminiWithPolicy(url, body, { timeoutMs = 55000 } = {}
 }
 
 /**
+ * Groq's free tier (verified directly against console.groq.com/docs/rate-limits):
+ *   llama-3.3-70b-versatile : 30 RPM / 1,000 RPD / 12K TPM / 100K TPD
+ *   whisper-large-v3        : 20 RPM / 2,000 RPD / 25MB direct upload
+ * Both are meaningfully more generous than Gemini's free tier for this
+ * workload, and — critically — are a COMPLETELY SEPARATE quota from
+ * Gemini's. Using Groq as primary and Gemini as fallback means a
+ * submission only fails if both providers are exhausted/down at the same
+ * moment, not just one.
+ */
+const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
+const GROQ_TEXT_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_WHISPER_MODEL = 'whisper-large-v3'
+
+export function classifyGroqError(status, bodyText) {
+  if (status === 429) return 'quota' // daily/per-minute cap hit — fall back, don't retry the same provider
+  if (status >= 500) return 'overload' // transient — one quick retry is worth it before falling back
+  return 'other'
+}
+
+/** Text-only grading call to Groq's OpenAI-compatible chat endpoint. */
+async function callGroqChat(groqKey, systemPrompt, userText, { timeoutMs = 45000 } = {}) {
+  const attempt = async () => {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const res = await fetch(GROQ_CHAT_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: GROQ_TEXT_MODEL,
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userText },
+          ],
+        }),
+        signal: controller.signal,
+      })
+      if (res.ok) return { ok: true, json: await res.json() }
+      const errText = await res.text()
+      return { ok: false, status: res.status, kind: classifyGroqError(res.status, errText), rawText: errText }
+    } finally {
+      clearTimeout(t)
+    }
+  }
+
+  let result = await attempt()
+  if (!result.ok && result.kind === 'overload') {
+    await new Promise((r) => setTimeout(r, 2000))
+    result = await attempt()
+  }
+  return result
+}
+
+/**
+ * Grades text (EE essay, or an EO transcript) with Groq first, falling
+ * back to Gemini (with its own responseSchema-based structured output) if
+ * Groq is exhausted, overloaded, or errors for any other reason. Returns
+ * { ok, provider, parsed } on success, or { ok: false, kind, rawText } if
+ * BOTH providers failed — mirroring callGeminiWithPolicy's return shape so
+ * existing caller code barely changes.
+ */
+export async function gradeTextWithFallback({ systemPrompt, userText, groqKey, geminiKey, geminiUrl, responseSchema }) {
+  if (groqKey) {
+    const groqResult = await callGroqChat(groqKey, systemPrompt, userText)
+    if (groqResult.ok) {
+      const rawText = groqResult.json.choices?.[0]?.message?.content
+      if (rawText) {
+        try {
+          return { ok: true, provider: 'groq', parsed: JSON.parse(rawText) }
+        } catch (e) {
+          console.error('gradeTextWithFallback: Groq returned invalid JSON, falling back to Gemini:', e.message)
+        }
+      } else {
+        console.error('gradeTextWithFallback: Groq returned no content, falling back to Gemini')
+      }
+    } else {
+      console.error('gradeTextWithFallback: Groq failed, kind=', groqResult.kind, '— falling back to Gemini')
+    }
+  }
+
+  if (!geminiKey) {
+    return { ok: false, kind: 'other', rawText: 'Groq failed and no GEMINI_API_KEY is configured as fallback.' }
+  }
+
+  const geminiResult = await callGeminiWithPolicy(geminiUrl, {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: userText }] }],
+    generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema },
+  })
+  if (!geminiResult.ok) return geminiResult
+
+  const rawText = geminiResult.json.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!rawText) return { ok: false, kind: 'other', rawText: 'Gemini returned no content (after Groq fallback)' }
+  return { ok: true, provider: 'gemini', parsed: JSON.parse(rawText) }
+}
+
+/**
+ * Transcribes audio with Groq Whisper (fast, generous 2,000/day free
+ * quota, purpose-built for this). Returns { ok, provider: 'groq',
+ * transcript } on success, or { ok: false } if Groq isn't configured or
+ * fails — in which case the caller should fall back to sending the audio
+ * directly to Gemini's multimodal endpoint (transcription + grading
+ * combined in one call, the original pipeline), since that doesn't need a
+ * separate transcript step at all.
+ */
+export async function transcribeWithGroq(groqKey, audioBlob, mimeType, { timeoutMs = 45000 } = {}) {
+  if (!groqKey) return { ok: false, kind: 'other', rawText: 'No GROQ_API_KEY configured' }
+
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const form = new FormData()
+    form.append('file', audioBlob, `recording.${mimeType.includes('webm') ? 'webm' : 'wav'}`)
+    form.append('model', GROQ_WHISPER_MODEL)
+    form.append('language', 'fr') // TCF Canada is always French — pins accuracy and speed
+    form.append('response_format', 'json')
+
+    const res = await fetch(GROQ_TRANSCRIBE_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${groqKey}` },
+      body: form,
+      signal: controller.signal,
+    })
+    if (!res.ok) {
+      const errText = await res.text()
+      return { ok: false, status: res.status, kind: classifyGroqError(res.status, errText), rawText: errText }
+    }
+    const json = await res.json()
+    if (!json.text) return { ok: false, kind: 'other', rawText: 'Groq Whisper returned no transcript' }
+    return { ok: true, provider: 'groq', transcript: json.text }
+  } catch (err) {
+    return { ok: false, kind: 'other', rawText: err.message }
+  } finally {
+    clearTimeout(t)
+  }
+}
+/**
  * Returns the user's currently in-progress evaluation (if any) across
- * BOTH ee_submissions and eo_submissions — they share the same Gemini API
- * key/quota, so a lock on one module has to cover the other too.
+ * BOTH ee_submissions and eo_submissions — they now share Groq's quota
+ * too (in addition to Gemini's), so a lock on one module still has to
+ * cover the other.
  *
  * `excludeKind`/`excludeSujetNumber` identify the sujet currently being
  * submitted: its own 2-3 tasks legitimately go to 'evaluating' together
