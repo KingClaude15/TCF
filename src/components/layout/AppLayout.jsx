@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import Footer from './Footer'
+import OnboardingTour from '../onboarding/OnboardingTour'
+import { useAuth } from '../../context/AuthContext'
 
 const TITLES = {
   '/dashboard': 'Dashboard',
@@ -25,11 +27,15 @@ const NO_FOOTER_PATTERNS = [/^\/ee(\/|$)/, /^\/co\/[^/]+$/, /^\/ce\/[^/]+$/]
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { pathname } = useLocation()
+  const { profile, profileLoading } = useAuth()
+  const [tourDismissed, setTourDismissed] = useState(false)
   const title = TITLES[pathname] || (pathname.startsWith('/ee/') ? 'Expression Écrite' : 'TCF Challenge')
   const showFooter = !NO_FOOTER_PATTERNS.some((re) => re.test(pathname))
+  const showTour = !profileLoading && profile && !profile.onboarding_completed && !tourDismissed
 
   return (
     <div className="flex min-h-screen bg-surface dark:bg-surface-dark">
+      {showTour && <OnboardingTour onDone={() => setTourDismissed(true)} />}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setSidebarOpen(true)} title={title} />

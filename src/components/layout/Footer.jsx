@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { GraduationCap, Mail, ShieldCheck, Headphones, BookOpen, PenLine, ExternalLink } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
@@ -15,12 +16,18 @@ const RESOURCE_LINKS = [
   { label: 'Calendrier du défi', to: '/calendar' },
 ]
 
+const LEGAL_LINKS = [
+  { label: 'À propos', to: '/about' },
+  { label: 'Politique de confidentialité', to: '/privacy' },
+  { label: "Conditions d'utilisation", to: '/terms' },
+]
+
 export default function Footer() {
   return (
     <footer className="mt-10 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-darkCard">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
                 <GraduationCap size={18} />
@@ -42,10 +49,10 @@ export default function Footer() {
             <ul className="mt-3 space-y-2.5">
               {PROGRAM_LINKS.map(({ label, to, icon: Icon }) => (
                 <li key={to}>
-                  <a href={to} className="flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300">
+                  <Link to={to} className="flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300">
                     <Icon size={14} className="text-slate-400" />
                     {label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -56,18 +63,25 @@ export default function Footer() {
             <ul className="mt-3 space-y-2.5">
               {RESOURCE_LINKS.map(({ label, to }) => (
                 <li key={to}>
-                  <a href={to} className="text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300">
+                  <Link to={to} className="text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300">
                     {label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="eyebrow text-slate-400 dark:text-slate-500">Assistance</p>
-            <ul className="mt-3 space-y-2.5 text-sm text-slate-600 dark:text-slate-300">
-              <li className="flex items-center gap-2">
+            <p className="eyebrow text-slate-400 dark:text-slate-500">Légal & assistance</p>
+            <ul className="mt-3 space-y-2.5">
+              {LEGAL_LINKS.map(({ label, to }) => (
+                <li key={to}>
+                  <Link to={to} className="text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+              <li className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <Mail size={14} className="text-slate-400" />
                 support@tcfchallenge.ca
               </li>
@@ -76,7 +90,7 @@ export default function Footer() {
                   href="https://www.france-education-international.fr/tcf"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 transition-colors hover:text-brand-600 dark:hover:text-brand-300"
+                  className="flex items-center gap-1.5 text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-300"
                 >
                   Format officiel TCF Canada <ExternalLink size={12} />
                 </a>

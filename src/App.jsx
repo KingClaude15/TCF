@@ -10,6 +10,10 @@ import AppLayout from './components/layout/AppLayout'
 import Login from './pages/Login'
 
 const Signup           = lazy(() => import('./pages/Signup'))
+const Landing          = lazy(() => import('./pages/Landing'))
+const About            = lazy(() => import('./pages/legal/About'))
+const PrivacyPolicy     = lazy(() => import('./pages/legal/PrivacyPolicy'))
+const TermsOfService    = lazy(() => import('./pages/legal/TermsOfService'))
 const PendingApproval  = lazy(() => import('./pages/PendingApproval'))
 const SuspendedAccount = lazy(() => import('./pages/SuspendedAccount'))
 const ResetPassword    = lazy(() => import('./pages/ResetPassword'))   // ← NEW
@@ -59,6 +63,10 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* ── Public routes ─────────────────────────────────────── */}
+          <Route path="/"               element={<Landing />} />
+          <Route path="/about"          element={<About />} />
+          <Route path="/privacy"        element={<PrivacyPolicy />} />
+          <Route path="/terms"          element={<TermsOfService />} />
           <Route path="/login"          element={<Login />} />
           <Route path="/signup"         element={<Signup />} />
           <Route path="/pending"        element={<PendingApproval />} />
@@ -68,7 +76,6 @@ export default function App() {
           {/* ── Protected routes ──────────────────────────────────── */}
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
-              <Route path="/"           element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard"  element={<Dashboard />} />
               <Route path="/calendar"   element={<ChallengeCalendar />} />
               <Route path="/co"         element={<CO />} />
