@@ -114,18 +114,24 @@ export async function submitRecording({
       taskType,
     },
   })
-  if (error) {
-    let message = error.message
-    try {
-      const body = await error.context?.json()
-      if (body?.error) message = body.error
-    } catch {
-      // response wasn't JSON — fall back to the generic error message
-    }
-    throw new Error(message)
+
+  // ── SUCCESS PATH — check data first (same fix as eeService.js) ───────────
+  if (data?.status === 'accepted') {
+    return data // { status: 'accepted', submissionId }
   }
-  if (data?.error) throw new Error(data.error)
-  return data // { status: 'accepted', submissionId }
+
+  // ── STRUCTURED ERROR from edge function body (409 lock, 400 bad request) ──
+  if (data?.error) {
+    throw new Error(data.error)
+  }
+
+  // ── SDK-LEVEL ERROR ───────────────────────────────────────────────────────
+  // Do NOT call error.context?.json() — body already consumed by the SDK.
+  if (error) {
+    throw new Error(error.message || 'Erreur lors de la soumission EO')
+  }
+
+  throw new Error('Réponse inattendue du serveur — réessaie dans un instant.')
 }
 
 export function computeAverageEoScore(submissions) {
