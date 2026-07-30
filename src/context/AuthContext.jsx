@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const AuthContext = createContext(undefined)
@@ -26,19 +26,49 @@ export function AuthProvider({ children }) {
     setProfileLoading(false)
   }, [])
 
+  // Tracks whose profile is currently loaded, so we can tell a *real*
+  // identity change (sign in, sign out, switch account) apart from
+  // Supabase silently re-emitting onAuthStateChange for the SAME user —
+  // which it does routinely (e.g. a TOKEN_REFRESHED event whenever the
+  // browser tab regains focus/visibility, even though nothing about the
+  // session actually needs re-fetching).
+  //
+  // BUG THIS FIXES: previously, every single onAuthStateChange event —
+  // including those harmless same-user refreshes — called loadProfile(),
+  // which flips profileLoading to true and back. ProtectedRoute renders a
+  // full-screen spinner IN PLACE OF <Outlet/> while profileLoading is
+  // true, which unmounts whatever page the user is currently on. The
+  // practical symptom: switch to another browser tab/app and back, and
+  // the page you were on would appear to "auto-refresh" — any in-progress
+  // state (a partially written EE draft, quiz answers, scroll position)
+  // was silently lost, even though nothing about the user's session had
+  // actually changed.
+  const lastLoadedUserId = useRef(null)
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const uid = session?.user?.id ?? null
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-      loadProfile(session?.user?.id)
+      lastLoadedUserId.current = uid
+      loadProfile(uid)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user?.id ?? null
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-      loadProfile(session?.user?.id)
+
+      if (uid !== lastLoadedUserId.current) {
+        lastLoadedUserId.current = uid
+        loadProfile(uid)
+      }
+      // else: same user as already loaded (routine token refresh, tab
+      // refocus, etc.) — session/token state above is still kept fresh,
+      // but we deliberately skip re-fetching the profile so the rest of
+      // the app never sees a spurious profileLoading flicker.
     })
 
     return () => listener.subscription.unsubscribe()
