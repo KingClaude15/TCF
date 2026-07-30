@@ -36,6 +36,7 @@ const AdminHome        = lazy(() => import('./pages/admin/AdminHome'))
 const AdminUsers       = lazy(() => import('./pages/admin/AdminUsers'))
 const AdminActivity    = lazy(() => import('./pages/admin/AdminActivity'))
 const AdminSujets      = lazy(() => import('./pages/admin/AdminSujets'))
+const AdminEO          = lazy(() => import('./pages/admin/AdminEO'))
 const AdminCO          = lazy(() => import('./pages/admin/AdminCO'))
 const AdminCE          = lazy(() => import('./pages/admin/AdminCE'))
 const NotFound         = lazy(() => import('./pages/NotFound'))
@@ -99,6 +100,7 @@ export default function App() {
                   <Route path="users"    element={<AdminUsers />} />
                   <Route path="activity" element={<AdminActivity />} />
                   <Route path="sujets"   element={<AdminSujets />} />
+                  <Route path="eo"       element={<AdminEO />} />
                   <Route path="co"       element={<AdminCO />} />
                   <Route path="ce"       element={<AdminCE />} />
                 </Route>
