@@ -43,28 +43,39 @@ export default function OnboardingTour({ onDone }) {
   const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
-  const [closing, setClosing] = useState(false)
 
   const current = STEPS[step]
-  const isLast = step === STEPS.length - 1
+  const isLast  = step === STEPS.length - 1
 
-  async function finish(navigateTo) {
-    if (closing) return
-    setClosing(true)
-    try {
-      await updateProfile(user.id, { onboarding_completed: true })
-      await refreshProfile()
-    } catch {
-      // Non-critical — worst case the tour shows again next time, which is
-      // harmless. Never block the user from continuing over this.
-    }
+  /**
+   * Close the tour immediately via onDone() (which sets localStorage + state
+   * in AppLayout), then persist the flag to the DB in the background.
+   * The user is never blocked waiting for the DB write — if it fails,
+   * the localStorage flag in AppLayout still prevents the tour from
+   * re-appearing in the same session, and the DB write will succeed
+   * on the next successful page load via refreshProfile.
+   */
+  function finish(navigateTo) {
+    // 1. Close immediately — no await, no spinner
     onDone?.()
     if (navigateTo) navigate(navigateTo)
+
+    // 2. Persist to DB in the background (fire-and-forget)
+    if (user?.id) {
+      updateProfile(user.id, { onboarding_completed: true })
+        .then(() => refreshProfile())
+        .catch(() => {
+          // Non-critical — localStorage in AppLayout already suppresses
+          // the tour for this session. The DB will be updated on next login.
+        })
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/60 p-4 backdrop-blur-sm animate-fadeIn">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-surface-darkCard">
+
+        {/* Header row */}
         <div className="flex items-start justify-between">
           <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${current.accent}`}>
             <current.icon size={22} />
@@ -78,31 +89,46 @@ export default function OnboardingTour({ onDone }) {
           </button>
         </div>
 
-        <h2 className="mt-4 font-heading text-lg font-bold text-ink-900 dark:text-white">{current.title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{current.body}</p>
+        {/* Content */}
+        <h2 className="mt-4 font-heading text-lg font-bold text-ink-900 dark:text-white">
+          {current.title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+          {current.body}
+        </p>
 
+        {/* Step dots */}
         <div className="mt-6 flex items-center justify-center gap-1.5">
           {STEPS.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${i === step ? 'w-6 bg-brand-500' : 'w-1.5 bg-slate-200 dark:bg-slate-700'}`}
+              className={`h-1.5 rounded-full transition-all ${
+                i === step ? 'w-6 bg-brand-500' : 'w-1.5 bg-slate-200 dark:bg-slate-700'
+              }`}
             />
           ))}
         </div>
 
+        {/* Navigation */}
         <div className="mt-6 flex items-center justify-between gap-3">
           {step > 0 ? (
-            <button onClick={() => setStep((s) => s - 1)} className="btn-secondary !px-3.5">
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="btn-secondary !px-3.5"
+            >
               <ArrowLeft size={15} /> Précédent
             </button>
           ) : (
-            <button onClick={() => finish()} className="text-sm font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+            <button
+              onClick={() => finish()}
+              className="text-sm font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
               Passer
             </button>
           )}
 
           {isLast ? (
-            <button onClick={() => finish('/ee')} disabled={closing} className="btn-primary">
+            <button onClick={() => finish('/ee')} className="btn-primary">
               Commencer <ArrowRight size={15} />
             </button>
           ) : (
