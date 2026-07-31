@@ -3,16 +3,15 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { listAllEoSujets, createEoSujet, updateEoSujet, deleteEoSujet, getNextEoSujetNumber } from '../../services/sujetsService'
+import { EO_TACHE1_FIXED_PROMPT, EO_TACHE1_MAX_SECONDS } from '../../data/eoConstants'
 import Modal from '../../components/ui/Modal'
 import EmptyState from '../../components/ui/EmptyState'
-import { Plus, Pencil, Trash2, Mic, Loader2, EyeOff, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Mic, Loader2, EyeOff, Eye, Lock } from 'lucide-react'
 import clsx from 'clsx'
 
 const EMPTY_FORM = {
   sujet_number: '',
   title: '',
-  tache1_prompt: '',
-  tache1_max_seconds: 120,
   tache2_prompt: '',
   tache2_prep_seconds: 120,
   tache2_max_seconds: 210,
@@ -165,8 +164,8 @@ function EoSujetFormModal({ open, onClose, initial, userId, onSaved }) {
       const payload = {
         sujet_number: Number(form.sujet_number),
         title: form.title || null,
-        tache1_prompt: form.tache1_prompt,
-        tache1_max_seconds: Number(form.tache1_max_seconds),
+        tache1_prompt: EO_TACHE1_FIXED_PROMPT, // standardized across every sujet — not editable
+        tache1_max_seconds: EO_TACHE1_MAX_SECONDS,
         tache2_prompt: form.tache2_prompt,
         tache2_prep_seconds: Number(form.tache2_prep_seconds),
         tache2_max_seconds: Number(form.tache2_max_seconds),
@@ -204,10 +203,12 @@ function EoSujetFormModal({ open, onClose, initial, userId, onSaved }) {
           </div>
         </div>
 
-        <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <legend className="px-1 text-xs font-bold uppercase text-brand-600">Tâche 1 — Entretien dirigé (sans préparation)</legend>
-          <textarea required rows={3} className="input-field" placeholder="Consigne de l'entretien dirigé..." value={form.tache1_prompt} onChange={(e) => set('tache1_prompt', e.target.value)} />
-          <input type="number" className="input-field" value={form.tache1_max_seconds} onChange={(e) => set('tache1_max_seconds', e.target.value)} placeholder="Durée max (secondes)" />
+        <fieldset className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-bold uppercase text-slate-400">
+            <Lock size={11} /> Tâche 1 — Entretien dirigé (standardisée)
+          </legend>
+          <p className="whitespace-pre-line text-sm text-slate-500 dark:text-slate-400">{EO_TACHE1_FIXED_PROMPT}</p>
+          <p className="text-xs text-slate-400">Durée max : 2 minutes — identique pour tous les sujets, conforme au format officiel TCF Canada.</p>
         </fieldset>
 
         <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">

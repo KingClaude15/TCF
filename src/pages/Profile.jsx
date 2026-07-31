@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useChallengeData } from '../hooks/useChallengeData'
 import { updateProfile, deleteMyAccount } from '../services/profileService'
+import ActiveSessions from '../components/profile/ActiveSessions'
 import { toastError } from '../lib/errorMessages'
 import toast from 'react-hot-toast'
 import Modal from '../components/ui/Modal'
@@ -442,7 +443,10 @@ export default function Profile() {
       )}
 
       {activeTab === 'settings' && (
-        <div className="card space-y-4 border-red-200 p-6 dark:border-red-900/60">
+        <div className="space-y-6">
+          <ActiveSessions />
+
+          <div className="card space-y-4 border-red-200 p-6 dark:border-red-900/60">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300">
               <AlertTriangle size={17} />
@@ -459,6 +463,7 @@ export default function Profile() {
           >
             <Trash2 size={15} /> Supprimer mon compte
           </button>
+          </div>
         </div>
       )}
 
