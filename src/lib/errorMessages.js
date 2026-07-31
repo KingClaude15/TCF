@@ -152,5 +152,10 @@ export function getFriendlyError(err, fallback) {
  */
 import toast from 'react-hot-toast'
 export function toastError(err, fallback) {
+  // The toast itself is deliberately friendly/generic, but silently
+  // discarding the real error made every bug report a guessing game.
+  // Always log the actual error too — check the browser console (not just
+  // the toast text) when diagnosing an "Impossible de..." message.
+  console.error('[toastError]', err)
   toast.error(getFriendlyError(err, fallback))
 }
