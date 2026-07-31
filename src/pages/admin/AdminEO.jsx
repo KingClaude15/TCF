@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { listAllEoSujets, createEoSujet, updateEoSujet, deleteEoSujet, getNextEoSujetNumber } from '../../services/sujetsService'
-import { EO_TACHE1_FIXED_PROMPT, EO_TACHE1_MAX_SECONDS } from '../../data/eoConstants'
+import { EO_TACHE1_FIXED_PROMPT, EO_TACHE1_MAX_SECONDS, EO_TACHE2_PREP_SECONDS, EO_TACHE2_MAX_SECONDS, EO_TACHE3_PREP_SECONDS, EO_TACHE3_MAX_SECONDS } from '../../data/eoConstants'
 import Modal from '../../components/ui/Modal'
 import EmptyState from '../../components/ui/EmptyState'
 import { Plus, Pencil, Trash2, Mic, Loader2, EyeOff, Eye, Lock } from 'lucide-react'
@@ -13,11 +13,7 @@ const EMPTY_FORM = {
   sujet_number: '',
   title: '',
   tache2_prompt: '',
-  tache2_prep_seconds: 120,
-  tache2_max_seconds: 210,
   tache3_topic: '',
-  tache3_prep_seconds: 0,
-  tache3_max_seconds: 270,
   is_published: true,
 }
 
@@ -167,11 +163,11 @@ function EoSujetFormModal({ open, onClose, initial, userId, onSaved }) {
         tache1_prompt: EO_TACHE1_FIXED_PROMPT, // standardized across every sujet — not editable
         tache1_max_seconds: EO_TACHE1_MAX_SECONDS,
         tache2_prompt: form.tache2_prompt,
-        tache2_prep_seconds: Number(form.tache2_prep_seconds),
-        tache2_max_seconds: Number(form.tache2_max_seconds),
+        tache2_prep_seconds: EO_TACHE2_PREP_SECONDS,
+        tache2_max_seconds: EO_TACHE2_MAX_SECONDS,
         tache3_topic: form.tache3_topic,
-        tache3_prep_seconds: Number(form.tache3_prep_seconds),
-        tache3_max_seconds: Number(form.tache3_max_seconds),
+        tache3_prep_seconds: EO_TACHE3_PREP_SECONDS,
+        tache3_max_seconds: EO_TACHE3_MAX_SECONDS,
         is_published: form.is_published,
       }
       if (form.id) {
@@ -211,22 +207,16 @@ function EoSujetFormModal({ open, onClose, initial, userId, onSaved }) {
           <p className="text-xs text-slate-400">Durée max : 2 minutes — identique pour tous les sujets, conforme au format officiel TCF Canada.</p>
         </fieldset>
 
-        <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+        <fieldset className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <legend className="px-1 text-xs font-bold uppercase text-brand-600">Tâche 2 — Poser des questions (avec préparation)</legend>
           <textarea required rows={3} className="input-field" placeholder="Situation à préparer, consigne pour poser des questions..." value={form.tache2_prompt} onChange={(e) => set('tache2_prompt', e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <input type="number" className="input-field" value={form.tache2_prep_seconds} onChange={(e) => set('tache2_prep_seconds', e.target.value)} placeholder="Préparation (secondes)" />
-            <input type="number" className="input-field" value={form.tache2_max_seconds} onChange={(e) => set('tache2_max_seconds', e.target.value)} placeholder="Durée max (secondes)" />
-          </div>
+          <p className="text-xs text-slate-400">Préparation : 2 min · Durée de parole : 3 min 30 — identique pour tous les sujets.</p>
         </fieldset>
 
-        <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+        <fieldset className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <legend className="px-1 text-xs font-bold uppercase text-brand-600">Tâche 3 — Point de vue (sans préparation)</legend>
           <textarea required rows={3} className="input-field" placeholder="Question / affirmation à commenter..." value={form.tache3_topic} onChange={(e) => set('tache3_topic', e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <input type="number" className="input-field" value={form.tache3_prep_seconds} onChange={(e) => set('tache3_prep_seconds', e.target.value)} placeholder="Préparation (secondes)" />
-            <input type="number" className="input-field" value={form.tache3_max_seconds} onChange={(e) => set('tache3_max_seconds', e.target.value)} placeholder="Durée max (secondes)" />
-          </div>
+          <p className="text-xs text-slate-400">Sans préparation · Durée de parole : 4 min 30 — identique pour tous les sujets.</p>
         </fieldset>
 
         <label className="flex items-center gap-2 text-sm">

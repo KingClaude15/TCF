@@ -13,3 +13,12 @@ Points à aborder :
 4. Projets (objectifs, TCF)`
 
 export const EO_TACHE1_MAX_SECONDS = 120 // 2 minutes, per the official format above
+
+// Tâche 2 (poser des questions) and Tâche 3 (point de vue) timings are
+// also fixed by the official TCF Canada format — only the question text
+// genuinely varies per sujet. AdminEO.jsx no longer exposes these as
+// editable number fields; every sujet is created with these values.
+export const EO_TACHE2_PREP_SECONDS = 120 // 2 min preparation
+export const EO_TACHE2_MAX_SECONDS = 210 // 3.5 min to speak
+export const EO_TACHE3_PREP_SECONDS = 0 // sans préparation
+export const EO_TACHE3_MAX_SECONDS = 270 // 4.5 min to speak
