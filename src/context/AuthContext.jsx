@@ -10,19 +10,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(true)
 
+  // profileEverLoaded tracks whether we've successfully fetched a profile
+  // at least once in this session. Used so loadProfile() never shows the
+  // full-screen spinner again once data is available — subsequent calls
+  // (from refreshProfile or onboarding completion) update silently.
+  const profileEverLoaded = useRef(false)
+
   const loadProfile = useCallback(async (userId) => {
     if (!userId) {
       setProfile(null)
+      profileEverLoaded.current = false
       setProfileLoading(false)
       return
     }
-    setProfileLoading(true)
+    // Only show the spinner on the very first load (no data yet).
+    // On any subsequent call — refreshProfile after an update, or a
+    // redundant onAuthStateChange event — update silently in the background.
+    // This prevents ProtectedRoute from replacing <Outlet> with a spinner
+    // just because refreshProfile() was called after saving the profile.
+    if (!profileEverLoaded.current) {
+      setProfileLoading(true)
+    }
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, email, role, status, created_at, onboarding_completed')
       .eq('id', userId)
       .maybeSingle()
-    if (!error) setProfile(data)
+    if (!error && data) {
+      setProfile(data)
+      profileEverLoaded.current = true
+    }
     setProfileLoading(false)
   }, [])
 
