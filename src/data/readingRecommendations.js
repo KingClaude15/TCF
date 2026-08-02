@@ -1,308 +1,374 @@
 /**
  * readingRecommendations.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Curated reading and textbook recommendations shown after every EE correction.
+ * 100% FREE resources only — this is a free platform for students.
+ * Every URL here is accessible without payment, login walls, or purchase.
+ *
+ * Last verified: August 2026
  *
  * Two catalogues:
  *
- *  1. TCF_GUIDES   — TCF-Canada-specific preparation guides and methodology
- *                    resources. Recommended based on the user's current
- *                    CECRL band so they always get something actionable.
+ *  1. TCF_GUIDES   — Free TCF-Canada EE methodology, sample subjects,
+ *                    corrected models, and official resources.
  *
- *  2. FRENCH_TEXTBOOKS — General French-language progression textbooks
- *                        (B1→C2 journey). Recommended based on band so the
- *                        user knows exactly which book level to buy next.
+ *  2. FRENCH_RESOURCES — Free online tools, platforms, and courses
+ *                        to progress from B1 to C2 in French writing.
  *
- * Each resource has:
+ * Band mapping logic:
+ *   Every resource has a `bands` array listing CECRL levels for which
+ *   it is recommended. getRecommendations(band) filters both catalogues
+ *   and returns the most relevant subset.
+ *
+ * Resource fields:
  *   id          — unique slug
- *   title       — full title
- *   author      — author / publisher
- *   type        — 'guide' | 'textbook' | 'website' | 'video'
- *   format      — 'PDF' | 'Print' | 'Online' | 'Print+PDF' | 'App'
- *   level       — CECRL levels this resource targets (array)
- *   bands       — which score bands trigger a recommendation (array of
- *                 CECRL strings — a user at this band gets this resource)
- *   url         — where to buy/access it
- *   price       — display string (null = free)
- *   description — one paragraph pitch in French
- *   highlights  — 3 bullet-point strengths
- *   badge       — short pill label ('Bestseller', 'Gratuit', 'Officiel'…)
- *   coverEmoji  — emoji representing the book/resource (no image deps)
+ *   title       — full title shown to user
+ *   author      — who made it
+ *   type        — 'website' | 'pdf' | 'video' | 'course' | 'tool'
+ *   format      — display label: 'Site web' | 'PDF gratuit' | 'Vidéo' | 'Cours en ligne' | 'Outil'
+ *   level       — CECRL levels the resource covers
+ *   bands       — CECRL bands for which it is recommended
+ *   url         — direct link (verified free, no paywall)
+ *   description — one paragraph in French explaining what it is and why it helps
+ *   highlights  — 3 specific bullet points (concrete, not marketing fluff)
+ *   badge       — short pill: '100% Gratuit' | 'Officiel FEI' | 'Sujets réels' | etc.
+ *   coverEmoji  — emoji (no external image dependency)
  */
 
-// ─── TCF / EE-specific guides ─────────────────────────────────────────────────
+// ─── 1. TCF / EE Free Guides ──────────────────────────────────────────────────
 export const TCF_GUIDES = [
   {
-    id: 'maitrisez-ee-tcfca',
-    title: 'Maîtrisez l\'Expression Écrite du TCF Canada',
-    author: 'Experts tcfca.com',
-    type: 'guide',
-    format: 'PDF',
-    level: ['B1', 'B2', 'C1', 'C2'],
-    bands: ['B1', 'B2', 'C1', 'C2', 'A2'],
-    url: 'https://www.tcfca.com/tcf-canada-sujets/expression-ecrite/',
-    price: 'Payant',
+    id: 'fei-officiel-exemples',
+    title: 'Exemples officiels TCF — France Éducation International',
+    author: 'France Éducation International (FEI)',
+    type: 'website',
+    format: 'Site officiel',
+    level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    url: 'https://www.france-education-international.fr/en/test/tcf-canada',
     description:
-      'Le guide de référence pour l\'EE du TCF Canada, conçu par des examinateurs officiels. Plus de 100 modèles de réponses pour les 3 tâches, une méthodologie éprouvée pour structurer tes idées et des techniques de correcteurs pour maximiser ton score. Accès PDF instantané après achat.',
+      'Le site officiel de France Éducation International — l\'organisme qui crée et corrige le TCF Canada. Il publie gratuitement des exemples de sujets d\'expression écrite, des guides candidats et les critères d\'évaluation officiels. C\'est la source la plus fiable qui existe : ce sont exactement les mêmes examinateurs qui noteront ta copie le jour J.',
     highlights: [
-      '+100 modèles de réponses basés sur de vrais sujets d\'examen',
-      'Méthodologie d\'examinateurs pour structurer tes textes',
-      'Couvre les 3 tâches : Message, Récit, Analyse argumentative',
+      'Exemples de sujets officiels pour les 3 tâches EE',
+      'Critères d\'évaluation exacts utilisés par les correcteurs FEI',
+      'Manuel du candidat téléchargeable gratuitement',
     ],
-    badge: 'Bestseller',
-    coverEmoji: '📘',
+    badge: 'Officiel FEI',
+    coverEmoji: '🏛️',
   },
   {
-    id: 'maitriser-tcf-idees',
-    title: 'Maîtriser le TCF Canada — Idées pour l\'EE et l\'EO Tâche 3',
-    author: 'Examinateur TCF Canada (tcfca.com)',
-    type: 'guide',
-    format: 'PDF',
-    level: ['B2', 'C1', 'C2'],
-    bands: ['B2', 'C1', 'C2'],
-    url: 'https://www.tcfca.com/tcf-canada-sujets/l/maitriser-le-tcf-canada-des-idees-pour-lexpression-ecrite-et-orale-tache-3/',
-    price: 'Payant',
+    id: 'tcfca-sujets-actualite',
+    title: 'Sujets d\'actualité EE — Archives mensuelles 2022–2025',
+    author: 'tcf-canada.ca',
+    type: 'website',
+    format: 'Site web',
+    level: ['A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A2', 'B1', 'B2', 'C1', 'C2'],
+    url: 'https://tcf-canada.ca/expression-ecrite-sujets-dactualites/',
     description:
-      'Créé par un examinateur TCF, ce livre unique fournit des centaines d\'idées, d\'arguments et d\'exemples concrets pour la Tâche 3 — la plus redoutée. Des centaines d\'apprenants ont obtenu C1 et C2 grâce à ce guide. Idéal si tu bloques sur l\'argumentation.',
+      'Des dizaines de vrais sujets d\'expression écrite classés par mois depuis 2022 — gratuits, sans inscription. Ces sujets sont tirés de vraies sessions d\'examen et reviennent régulièrement. C\'est la meilleure source pour s\'entraîner sur du matériel authentique. Consulte les archives de plusieurs mois pour voir les thèmes récurrents.',
     highlights: [
-      'Focus exclusif sur la Tâche 3 (argumentation)',
-      'Centaines d\'arguments et idées classées par thèmes',
-      'Aide à construire des textes C1/C2 sans blocage',
+      'Archives de vrais sujets EE depuis 2022, organisés par mois',
+      'Sujets des 3 tâches incluant la Tâche 3 (argumentation)',
+      'Accès gratuit sans inscription — ouvrir et s\'entraîner immédiatement',
     ],
-    badge: 'Tâche 3',
-    coverEmoji: '🧠',
+    badge: 'Sujets réels',
+    coverEmoji: '📅',
   },
   {
-    id: 'tcfenligne-pratique',
-    title: 'TCF en Ligne — Entraînement EE avec exemples C1/C2',
+    id: 'tcfenligne-guide-gratuit',
+    title: 'Guide EE TCF Canada — Conseils, Structures et Modèles',
     author: 'tcfenligne.com',
     type: 'website',
-    format: 'Online',
+    format: 'Site web',
     level: ['A2', 'B1', 'B2', 'C1', 'C2'],
     bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
     url: 'https://www.tcfenligne.com/tcf-canada-expression-ecrite/',
-    price: null,
     description:
-      'La plateforme tcfenligne.com propose des exemples détaillés pour chaque tâche de l\'EE, avec des modèles de niveau C1 et C2 et des conseils pratiques. Gratuit pour l\'essentiel. Idéal pour lire des rédactions modèles et comprendre ce que cherchent les correcteurs.',
+      'Une page de référence gratuite avec la structure complète pour chaque tâche EE, des formules de politesse, des phrases types et des exemples de productions annotées de niveau C1–C2. Parfait pour comprendre ce que cherchent les correcteurs et apprendre les formules indispensables pour chaque type de texte.',
     highlights: [
-      'Exemples de productions écrites avec annotations',
-      'Conseils pratiques pour chaque type de tâche',
-      'Modèles de niveau C1–C2 accessibles gratuitement',
+      'Structure pas-à-pas pour les 3 tâches (Tâche 1 : courriel, Tâche 2 : récit, Tâche 3 : argumentation)',
+      'Formules de politesse et connecteurs logiques prêts à l\'emploi',
+      'Exemples de productions de niveau C1–C2 annotées gratuitement',
     ],
-    badge: 'Gratuit',
-    coverEmoji: '💻',
+    badge: '100% Gratuit',
+    coverEmoji: '📋',
   },
   {
-    id: 'passtcf-livre-corrige',
-    title: 'Livre TCF Canada Expression Écrite avec Corrigés',
-    author: 'passtcfcanada.com',
-    type: 'guide',
-    format: 'PDF',
+    id: 'globalexam-exemples-corriges',
+    title: 'Exemples Corrigés TCF EE — Sujets Zéro FEI',
+    author: 'GlobalExam (sujets FEI)',
+    type: 'website',
+    format: 'Site web',
     level: ['A2', 'B1', 'B2'],
     bands: ['A1 non atteint', 'A1', 'A2', 'B1'],
-    url: 'https://passtcfcanada.com/telechargez-votre-livre-tcf-canada-expression-ecrite-avec-corriges/',
-    price: 'Payant',
+    url: 'https://global-exam.com/blog/fr/exemple-dexpression-ecrite-du-tcf-et-corrige/',
     description:
-      'Un livre pratique avec des exercices corrigés pour les candidats débutant leur préparation à l\'EE. Couvre les 3 tâches avec des astuces, des exemples de rédactions annotées et des rappels sur le format de l\'épreuve. Bon point de départ avant de passer aux guides avancés.',
+      'GlobalExam publie gratuitement les "sujets zéro" de France Éducation International — ce sont des sujets officiels publiés par FEI eux-mêmes pour illustrer le format de l\'examen. Chaque sujet est accompagné d\'un corrigé commenté. Idéal pour les débutants qui veulent d\'abord comprendre le format avant de s\'entraîner.',
     highlights: [
-      'Exercises corrigés pour les 3 tâches',
-      'Astuces pratiques pour chaque type de texte',
-      'Rappels clairs sur le format et les critères de notation',
+      'Sujets zéro officiels publiés par FEI avec corrigés',
+      'Commentaires sur ce qui est bien et ce qui est à éviter',
+      'Explications sur la structure attendue pour chaque tâche',
     ],
-    badge: 'Débutants',
-    coverEmoji: '📝',
+    badge: '100% Gratuit',
+    coverEmoji: '✅',
   },
   {
-    id: 'objectifcanada-articles',
-    title: 'Articles de préparation TCF Canada — Objectif Canada',
+    id: 'prepmontcf-sujets',
+    title: 'Sujets EE par session — Archives 2022 à 2025',
+    author: 'prepmontcfca.com',
+    type: 'website',
+    format: 'Site web',
+    level: ['B1', 'B2', 'C1', 'C2'],
+    bands: ['B1', 'B2', 'C1', 'C2'],
+    url: 'https://prepmontcfca.com/sujets-expression-ecrite/',
+    description:
+      'Un deuxième site avec des archives de sujets réels classés par session d\'examen (2022, 2023, 2024, 2025). Très utile pour pratiquer en conditions réelles avec des sujets différents de ceux de l\'autre archive. Plus tu pratiques sur des sujets variés, plus tu t\'habitues aux formulations et aux thèmes de la Tâche 3.',
+    highlights: [
+      'Archives complètes de sessions réelles d\'examen par année',
+      'Sujets Tâche 3 pour pratiquer l\'argumentation sur des thèmes variés',
+      'Accès direct sans inscription ni paiement',
+    ],
+    badge: 'Sujets réels',
+    coverEmoji: '🗂️',
+  },
+  {
+    id: 'francaisavecpierre-pdf-sujets',
+    title: 'PDF Gratuit — 30 Sujets pour l\'EE et l\'EO du TCF',
+    author: 'Français avec Pierre',
+    type: 'pdf',
+    format: 'PDF gratuit',
+    level: ['A2', 'B1', 'B2', 'C1'],
+    bands: ['A2', 'B1', 'B2', 'C1'],
+    url: 'https://www.francaisavecpierre.com/exemple-tcf/',
+    description:
+      'Un PDF gratuit avec 30 sujets d\'entraînement pour l\'expression écrite et orale du TCF, téléchargeable sans achat. La page contient aussi une explication détaillée du format de chaque tâche EE avec des exemples concrets. Très bien pour s\'entraîner en hors-ligne une fois le PDF téléchargé.',
+    highlights: [
+      '30 sujets d\'entraînement EE et EO téléchargeables gratuitement',
+      'Explications du format et des attentes pour chaque tâche',
+      'Utilisable hors-ligne une fois téléchargé',
+    ],
+    badge: 'PDF Gratuit',
+    coverEmoji: '📥',
+  },
+  {
+    id: 'objectifcanada-blog',
+    title: 'Blog TCF Canada — Méthodologie et Conseils d\'Examinateurs',
     author: 'objectifcanada-tcf.com',
     type: 'website',
-    format: 'Online',
+    format: 'Blog gratuit',
     level: ['A2', 'B1', 'B2', 'C1'],
     bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1'],
     url: 'https://objectifcanada-tcf.com/fr/news/tcf',
-    price: null,
     description:
-      'Un blog dédié à la préparation du TCF Canada, avec des articles sur la méthodologie de chaque épreuve, des analyses des critères d\'évaluation et des conseils d\'examinateurs. Lecture idéale pendant les pauses entre les séances de pratique.',
+      'Un blog gratuit avec des articles réguliers sur la méthodologie du TCF Canada — erreurs fréquentes, stratégies de temps, structures à utiliser pour chaque tâche. Lecture idéale pendant les pauses entre deux séances de pratique. Les articles sont écrits par des personnes qui connaissent bien les critères d\'évaluation FEI.',
     highlights: [
-      'Articles méthodologiques sur toutes les épreuves du TCF',
-      'Analyses des critères de notation FEI',
-      'Conseils régulièrement mis à jour pour 2025–2026',
+      'Articles sur les erreurs les plus fréquentes à éviter',
+      'Conseils de gestion du temps pour les 60 minutes de l\'épreuve',
+      'Mis à jour régulièrement avec les tendances 2025–2026',
     ],
     badge: 'Blog gratuit',
     coverEmoji: '📰',
   },
   {
-    id: 'tef-canada-150-topics',
-    title: 'TEF/TCF Canada Expression Écrite — 150 Topics to Succeed',
-    author: 'Jean K. Mathieu',
-    type: 'guide',
-    format: 'Print+PDF',
-    level: ['B1', 'B2', 'C1'],
-    bands: ['B1', 'B2', 'C1'],
-    url: 'https://www.goodreads.com/author/list/18945217.Jean_K_Mathieu',
-    price: 'Payant',
+    id: 'tcfca-guide-ee',
+    title: 'Guide EE TCF Canada 2026 — Conseils pratiques et exemples corrigés',
+    author: 'tcfca.com',
+    type: 'website',
+    format: 'Site web',
+    level: ['A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A2', 'B1', 'B2', 'C1', 'C2'],
+    url: 'https://www.tcfca.com/se-preparer/tcf-canada-expression-ecrite/',
     description:
-      'Un livre axé sur les sujets les plus fréquents à l\'EE : 150 thèmes avec des arguments, du vocabulaire clé et des structures de phrases adaptées à chaque tâche. Très utile pour ne jamais se retrouver sans idées le jour de l\'examen.',
+      'La page de préparation EE de tcfca.com est gratuite et très complète : critères d\'évaluation par niveau, erreurs à éviter absolument (hors sujet, non-respect du nombre de mots, absence de nuance en Tâche 3), et exemples de productions pour chaque tâche. Un passage obligatoire avant de commencer à s\'entraîner.',
     highlights: [
-      '150 sujets couvrant les thèmes les plus fréquents',
-      'Arguments et vocabulaire organisés par thème',
-      'Structures de phrases réutilisables aux niveaux B1–C1',
+      'Critères exacts d\'évaluation par niveau CECRL pour chaque tâche',
+      'Liste des erreurs éliminatoires (hors sujet, nombre de mots, etc.)',
+      'Exemples de productions annotées pour les 3 tâches',
     ],
-    badge: 'Incontournable',
+    badge: '100% Gratuit',
     coverEmoji: '🎯',
   },
 ]
 
-// ─── General French progression textbooks (B1 → C2) ──────────────────────────
-export const FRENCH_TEXTBOOKS = [
+// ─── 2. Free French progression resources (B1 → C2) ──────────────────────────
+export const FRENCH_RESOURCES = [
   {
-    id: 'grammaire-progressive-intermediaire',
-    title: 'Grammaire Progressive du Français — Niveau Intermédiaire (A2–B1)',
-    author: 'Maïa Grégoire — CLE International',
-    type: 'textbook',
-    format: 'Print+PDF',
-    level: ['A2', 'B1'],
-    bands: ['A1 non atteint', 'A1', 'A2', 'B1'],
-    url: 'https://www.amazon.com/Grammaire-progressive-francais-Nouvelle-intermediaire/dp/2090381035',
-    price: '~18 €',
+    id: 'tv5monde-apprendre',
+    title: 'TV5MONDE — Apprendre le Français (A1 à C2)',
+    author: 'TV5MONDE / France Éducation International',
+    type: 'website',
+    format: 'Cours en ligne',
+    level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    url: 'https://apprendre.tv5monde.com/fr',
     description:
-      'La référence mondiale pour la grammaire française. 52 chapitres couvrant les niveaux A2 et B1, organisés en leçon à gauche et exercices à droite. Utilisé dans des milliers d\'écoles de langues. Si tu fais des erreurs récurrentes de grammaire dans tes rédactions, commence ici.',
+      'La plateforme officielle de TV5MONDE, développée en collaboration avec France Éducation International. Plus de 4 000 exercices interactifs à partir de vraies vidéos en français — tous niveaux A1 à C2, tout gratuit. Elle prépare aussi spécifiquement au TCF. C\'est l\'une des ressources les plus complètes et les plus fiables disponibles gratuitement sur internet pour améliorer son expression écrite.',
     highlights: [
-      '52 chapitres organisés par point de grammaire',
-      'Organisation claire : leçon + exercices sur chaque double page',
-      'Corrigés inclus pour travailler en autonomie',
+      'Plus de 4 000 exercices interactifs basés sur de vraies vidéos françaises',
+      'Préparation spécifique au TCF intégrée — produite avec FEI',
+      '100% gratuit, sans inscription obligatoire, disponible sur mobile et web',
     ],
-    badge: 'Référence mondiale',
-    coverEmoji: '📗',
-    isbn: '9782090381030',
+    badge: '100% Gratuit',
+    coverEmoji: '📺',
   },
   {
-    id: 'grammaire-progressive-avance',
-    title: 'Grammaire Progressive du Français — Niveau Avancé (B1–B2)',
-    author: 'Michèle Boularès & Jean-Louis Frérot — CLE International',
-    type: 'textbook',
-    format: 'Print',
+    id: 'rfi-savoirs',
+    title: 'RFI Savoirs — Exercices de Français B1–C1',
+    author: 'Radio France Internationale',
+    type: 'website',
+    format: 'Site web',
+    level: ['B1', 'B2', 'C1'],
+    bands: ['B1', 'B2', 'C1', 'C2'],
+    url: 'https://savoirs.rfi.fr/fr/apprendre-enseigner/langue-francaise',
+    description:
+      'RFI Savoirs est la plateforme pédagogique de Radio France Internationale. Elle propose des exercices de compréhension écrite et orale à partir de vraies émissions de radio françaises. Idéal pour s\'immerger dans un français authentique, enrichir son vocabulaire sur des thèmes d\'actualité (politique, environnement, société) — exactement les thèmes de la Tâche 3 du TCF.',
+    highlights: [
+      'Exercices à partir de vraies émissions RFI sur des thèmes d\'actualité',
+      'Vocabulaire de B1 à C1 sur des sujets sociétaux (Tâche 3)',
+      '100% gratuit — produit par des professeurs de FLE certifiés',
+    ],
+    badge: '100% Gratuit',
+    coverEmoji: '📻',
+  },
+  {
+    id: 'coursera-b1-b2-paris-saclay',
+    title: 'Cours Gratuit : Étudier en France — Français B1/B2',
+    author: 'Université Paris-Saclay (Coursera)',
+    type: 'course',
+    format: 'Cours en ligne',
     level: ['B1', 'B2'],
-    bands: ['B1', 'B2'],
-    url: 'https://www.amazon.com/Grammaire-progressive-francais-Corrig%C3%A9s-avanc%C3%A9/dp/2090381981',
-    price: '~20 €',
+    bands: ['A2', 'B1', 'B2'],
+    url: 'https://www.coursera.org/learn/etudier-en-france',
     description:
-      'La suite logique pour passer de B1 à B2. 72 chapitres sur les points de grammaire avancés — subjonctif, conditionnel, concordance des temps, nominalisation. Comprend 180 tests auto-correctifs et un CD audio. Exactement ce qu\'il faut pour éliminer les erreurs grammaticales qui plombent la note EE.',
+      'Un cours universitaire gratuit créé par l\'Université Paris-Saclay et accessible sur Coursera. Plus de 700 000 inscrits. Il cible le niveau B1/B2 avec des vidéos de cours, des textes authentiques et des exercices d\'écriture. Il est auditable gratuitement (sans certificat). Parfait pour progresser structurellement de A2/B1 vers B2 avec une progression pédagogique rigoureuse.',
     highlights: [
-      '72 chapitres pour les niveaux B1 et B2',
-      '180 tests auto-correctifs + CD audio',
-      'Focus sur les structures avancées les plus testées',
+      'Cours universitaire structuré B1/B2 — 700 000+ inscrits sur Coursera',
+      'Exercices d\'écriture guidés avec feedback progressif',
+      'Auditable gratuitement sans frais ni carte bancaire',
     ],
-    badge: 'B1→B2',
-    coverEmoji: '📙',
-    isbn: '9782090381979',
+    badge: 'Gratuit (audit)',
+    coverEmoji: '🎓',
   },
   {
-    id: 'grammaire-progressive-perfectionnement',
-    title: 'Grammaire Progressive du Français — Perfectionnement (B2–C2)',
-    author: 'Maïa Grégoire — CLE International',
-    type: 'textbook',
-    format: 'Print',
-    level: ['B2', 'C1', 'C2'],
-    bands: ['B2', 'C1', 'C2'],
-    url: 'https://www.amazon.com/Grammaire-progressive-francais-perfectionnement-couverture/dp/2090382090',
-    price: '~22 €',
-    description:
-      'Le niveau perfectionnement de la série Grammaire Progressive : 600 exercices pour maîtriser les structures C1 et C2. Couvre la stylistique, la syntaxe complexe et les registres de langue. Indispensable si tu vises un score EE de 14+ et que tes correcteurs te signalent des erreurs de registre ou de syntaxe avancée.',
-    highlights: [
-      '600 exercices de niveau C1–C2',
-      'Stylistique, syntaxe complexe et registres de langue',
-      'Corrigés intégrés pour l\'auto-apprentissage',
-    ],
-    badge: 'B2→C2',
-    coverEmoji: '📕',
-    isbn: '9782090382099',
-  },
-  {
-    id: 'alter-ego-plus-b2',
-    title: 'Alter Ego+ 4 — Méthode de Français B2',
-    author: 'Annie Berthet & al. — Hachette FLE',
-    type: 'textbook',
-    format: 'Print',
-    level: ['B2'],
-    bands: ['B1', 'B2'],
-    url: 'https://www.amazon.com/Alter-EGO-Plus-Francais-Etrangere/dp/2011558123',
-    price: '~28 €',
-    description:
-      'La méthode de français la plus utilisée au monde pour les niveaux adultes. Alter Ego+ 4 (B2) propose 8 dossiers thématiques avec documents authentiques, activités d\'écriture guidées et préparation au DELF B2. L\'approche actionnelle t\'apprend à écrire comme on écrit vraiment en France — pas seulement à répondre à un examen.',
-    highlights: [
-      '8 dossiers thématiques avec documents authentiques',
-      'Activités d\'écriture guidées progressives',
-      'Préparation intégrée au DELF B2',
-    ],
-    badge: 'Méthode complète',
-    coverEmoji: '🌍',
-    isbn: '9782011558121',
-  },
-  {
-    id: 'alter-ego-5-c1-c2',
-    title: 'Alter Ego 5 — Méthode de Français C1→C2',
-    author: 'Catherine Dollez & Michel Guilloux — Hachette FLE',
-    type: 'textbook',
-    format: 'Print',
-    level: ['C1', 'C2'],
-    bands: ['C1', 'C2', 'B2'],
-    url: 'https://www.amazon.com/Alter-Ego-Methode-Francais-French/dp/2011557976',
-    price: '~32 €',
-    description:
-      'Alter Ego 5 est la méthode de référence pour les apprenants ayant déjà le niveau B2. 12 dossiers thématiques sur des problématiques sociétales, des documents authentiques variés et 6 entraînements complets au DALF C1. Si tu as obtenu entre 10 et 17 à l\'EE, ce livre est ta prochaine étape pour franchir le cap C2.',
-    highlights: [
-      '12 dossiers sur des thèmes sociétaux contemporains',
-      '6 entraînements complets au DALF C1',
-      'Documents écrits et oraux 100% authentiques',
-    ],
-    badge: 'B2→C1/C2',
-    coverEmoji: '⭐',
-    isbn: '9782011557971',
-  },
-  {
-    id: 'bescherelle-conjugaison',
-    title: 'Bescherelle — La Conjugaison pour Tous',
-    author: 'Éditions Hatier / Hurtubise (Canada)',
-    type: 'textbook',
-    format: 'Print',
+    id: 'bonpatron-correcteur',
+    title: 'BonPatron — Correcteur Grammatical Français Gratuit',
+    author: 'bonpatron.com',
+    type: 'tool',
+    format: 'Outil',
     level: ['A2', 'B1', 'B2', 'C1', 'C2'],
     bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
-    url: 'https://www.amazon.com/Bescherelle-conjugaison-nouvelle-%C3%A9dition/dp/B07BBZH33Y',
-    price: '~10 €',
+    url: 'https://bonpatron.com',
     description:
-      'L\'outil de référence absolu pour la conjugaison française — 10 000 verbes sur 104 tableaux. Garde-le toujours à portée de main quand tu rédiges. Si les correcteurs signalent des erreurs de conjugaison dans tes rédactions, c\'est le premier outil à acquérir. Édition canadienne disponible chez Hurtubise.',
+      'BonPatron est un correcteur grammatical français spécialisé dans la détection des erreurs de français langue étrangère — contrairement aux correcteurs généraux, il comprend les erreurs typiques des apprenants de FLE. Colle ta rédaction avant de la soumettre pour vérifier les accords, la conjugaison et l\'orthographe. Utilisation gratuite en ligne, sans inscription.',
     highlights: [
-      '10 000 verbes français sur 104 tableaux de conjugaison',
-      'Référence de tous les temps et modes',
-      'Édition canadienne disponible (Hurtubise)',
+      'Détecte les erreurs typiques des apprenants FLE (pas seulement des natifs)',
+      'Explique chaque erreur détectée avec une règle grammaticale',
+      'Gratuit, en ligne, sans inscription — fonctionne immédiatement',
     ],
-    badge: 'Essentiel',
-    coverEmoji: '🔴',
-    isbn: '9782218953057',
+    badge: 'Outil gratuit',
+    coverEmoji: '🔍',
+  },
+  {
+    id: 'conjugueur-reverso',
+    title: 'Conjugueur Reverso — Tous les Temps, Tous les Verbes',
+    author: 'Reverso',
+    type: 'tool',
+    format: 'Outil',
+    level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+    url: 'https://conjugueur.reverso.net/conjugaison-francais.html',
+    description:
+      'Le conjugueur de Reverso donne en quelques secondes la conjugaison complète de n\'importe quel verbe français dans tous les temps et modes. Totalement gratuit. Quand tu rédiges une tâche et que tu doutes d\'une forme verbale (subjonctif, conditionnel passé, futur antérieur), c\'est le réflexe à avoir avant de soumettre.',
+    highlights: [
+      'Conjugaison complète de tout verbe français dans tous les temps',
+      'Inclut les verbes irréguliers et les temps les plus piégeux (subjonctif, conditionnel)',
+      'Gratuit, instantané — pas d\'inscription requise',
+    ],
+    badge: 'Outil gratuit',
+    coverEmoji: '📖',
+  },
+  {
+    id: 'cnrtl-synonymes',
+    title: 'CNRTL — Dictionnaire des Synonymes et Définitions',
+    author: 'Centre National de Ressources Textuelles et Lexicales (CNRS)',
+    type: 'tool',
+    format: 'Outil',
+    level: ['B1', 'B2', 'C1', 'C2'],
+    bands: ['B1', 'B2', 'C1', 'C2'],
+    url: 'https://www.cnrtl.fr/synonymie/',
+    description:
+      'Le CNRTL est la ressource lexicale de référence du CNRS français. Son dictionnaire de synonymes est idéal pour enrichir son vocabulaire et éviter les répétitions dans ses rédactions — un des critères clés de la compétence lexicale au TCF. Quand tu utilises un mot basique, cherche son synonyme plus précis ici pour viser un meilleur score lexical.',
+    highlights: [
+      'Synonymes précis et nuancés par registre de langue (soutenu, courant, familier)',
+      'Produit par le CNRS — la source la plus académique disponible gratuitement',
+      'Idéal pour remplacer les mots trop simples et enrichir ton lexique EE',
+    ],
+    badge: 'Outil gratuit',
+    coverEmoji: '📚',
+  },
+  {
+    id: 'inner-french-podcast',
+    title: 'Inner French — Podcast et Vidéos B1 à C1',
+    author: 'Hugo Cotton (Inner French)',
+    type: 'video',
+    format: 'Vidéo / Podcast',
+    level: ['B1', 'B2', 'C1'],
+    bands: ['B1', 'B2', 'C1'],
+    url: 'https://www.youtube.com/@InnerFrench',
+    description:
+      'Inner French est une chaîne YouTube et un podcast 100% gratuit animé par un professeur de FLE. Les épisodes sont en français naturel, à vitesse modérée, sur des sujets de société — exactement les thèmes de la Tâche 3. Écouter régulièrement te permet d\'acquérir des arguments, du vocabulaire thématique et des tournures de phrases avancées que tu pourras réutiliser à l\'écrit.',
+    highlights: [
+      'Podcast en français naturel sur des thèmes de société (Tâche 3)',
+      'Niveau B1 à C1 — vitesse ajustée pour les apprenants avancés',
+      '100% gratuit sur YouTube et plateformes de podcast',
+    ],
+    badge: '100% Gratuit',
+    coverEmoji: '🎧',
+  },
+  {
+    id: 'bescherelle-en-ligne',
+    title: 'leconjugueur.com — Conjugaison et Règles de Grammaire',
+    author: 'leconjugueur.com',
+    type: 'tool',
+    format: 'Outil',
+    level: ['A2', 'B1', 'B2', 'C1', 'C2'],
+    bands: ['A1 non atteint', 'A1', 'A2', 'B1', 'B2'],
+    url: 'https://leconjugueur.lefigaro.fr',
+    description:
+      'La version en ligne du Bescherelle — le conjugueur de référence — accessible gratuitement via Le Figaro. Conjugaisons, règles d\'accord, exceptions. Quand tu hésites sur une terminaison ou un accord de participe passé, c\'est ici que tu vérifies. Rapide et fiable, sans publicités intrusives.',
+    highlights: [
+      'Équivalent en ligne du Bescherelle — 100% gratuit',
+      'Règles d\'accord des participes passés expliquées clairement',
+      'Accès direct sans inscription — résultat en moins de 5 secondes',
+    ],
+    badge: 'Outil gratuit',
+    coverEmoji: '🔤',
   },
 ]
 
 /**
  * getRecommendations(cefrBand)
  * ──────────────────────────────
- * Returns a curated set of recommendations for a given CECRL band.
- * Always returns at least 1 TCF guide + 1 textbook, never more than
- * 3 guides + 2 textbooks (to keep the panel digestible).
+ * Returns curated FREE resources for the user's current CECRL band.
  *
- * Priority order:
- *  - Resources whose `bands` array includes the user's current band first
- *  - Then universal resources (all bands)
- *  - Trim to max counts
+ * Counts:
+ *   - Up to 4 TCF guides (always include the FEI official site first)
+ *   - Up to 3 French progression resources
+ *
+ * Ordering: FEI official always first in guides. Then band-matched resources.
  */
 export function getRecommendations(cefrBand) {
-  const matchGuides = TCF_GUIDES.filter((r) => r.bands.includes(cefrBand))
-  const matchBooks  = FRENCH_TEXTBOOKS.filter((r) => r.bands.includes(cefrBand))
+  // Guides: FEI official first, then band-matched
+  const feiFirst = TCF_GUIDES.filter(r => r.id === 'fei-officiel-exemples')
+  const otherGuides = TCF_GUIDES
+    .filter(r => r.id !== 'fei-officiel-exemples' && r.bands.includes(cefrBand))
+  const guides = [...feiFirst, ...otherGuides].slice(0, 4)
 
-  // Always include the free web resource and at least one paid guide
-  const guides = matchGuides.slice(0, 3)
-  const books  = matchBooks.slice(0, 2)
+  // Resources: TV5Monde first (works for all levels), then band-matched
+  const tv5First = FRENCH_RESOURCES.filter(r => r.id === 'tv5monde-apprendre')
+  const otherResources = FRENCH_RESOURCES
+    .filter(r => r.id !== 'tv5monde-apprendre' && r.bands.includes(cefrBand))
+  const resources = [...tv5First, ...otherResources].slice(0, 3)
 
-  return { guides, books }
+  return { guides, resources }
 }
