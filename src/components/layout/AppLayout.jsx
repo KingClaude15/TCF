@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -20,6 +20,20 @@ const TITLES = {
 }
 
 const NO_FOOTER_PATTERNS = [/^\/ee(\/|$)/, /^\/co\/[^/]+$/, /^\/ce\/[^/]+$/]
+
+// Used ONLY inside the Outlet's own Suspense boundary below — never at the
+// App.jsx root. Keeping the fallback scoped here means a lazy page chunk
+// still loading shows this small spinner in the content area while the
+// Sidebar/Topbar/Footer stay mounted, instead of the whole shell
+// unmounting and reappearing (which is what made navigation look like a
+// full page refresh).
+function ContentLoader() {
+  return (
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
+    </div>
+  )
+}
 
 // localStorage key — user-scoped so multiple accounts on the same browser
 // each get their own dismiss state.
@@ -93,7 +107,9 @@ export default function AppLayout() {
         <Topbar onMenuClick={() => setSidebarOpen(true)} title={title} />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 animate-fadeIn">
           <div className="mx-auto max-w-7xl">
-            <Outlet />
+            <Suspense fallback={<ContentLoader />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         {showFooter && (

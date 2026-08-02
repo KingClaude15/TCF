@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import clsx from 'clsx'
 import { ShieldCheck } from 'lucide-react'
@@ -40,7 +41,15 @@ export default function AdminHome() {
         ))}
       </div>
 
-      <Outlet />
+      <Suspense
+        fallback={
+          <div className="flex h-[40vh] items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
+          </div>
+        }
+      >
+        <Outlet />
+      </Suspense>
     </div>
   )
 }
