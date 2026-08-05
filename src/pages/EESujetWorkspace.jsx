@@ -110,7 +110,12 @@ export default function EESujetWorkspace() {
     } finally {
       setLoading(false)
     }
-  }, [sujetNumber, user])
+  // Depend on user?.id (stable string), NOT the whole `user` object.
+  // Supabase re-emits onAuthStateChange with a brand-new user object on
+  // every TOKEN_REFRESHED / tab-focus event. Depending on `user` caused
+  // `load` to be recreated → this effect re-ran → setLoading(true) + full
+  // refetch, which is exactly the "EE refreshes when I switch tabs" bug.
+  }, [sujetNumber, user?.id])
 
   useEffect(() => {
     load()
@@ -125,7 +130,7 @@ export default function EESujetWorkspace() {
       if (notif.link === `/ee/${sujetNumber}`) load()
     })
     return unsubscribe
-  }, [phase, user, sujetNumber, load])
+  }, [phase, user?.id, sujetNumber, load])
 
   const task = tasks[step]
   const wordCount = texts[step]?.trim() ? texts[step].trim().split(/\s+/).length : 0
@@ -148,7 +153,7 @@ export default function EESujetWorkspace() {
         // Silent autosave — a transient failure here shouldn't interrupt writing.
       }
     },
-    [tasks, sujetNumber, user]
+    [tasks, sujetNumber, user?.id]
   )
 
   // Refs mirror the latest step/text so the autosave interval below can be
@@ -296,7 +301,7 @@ export default function EESujetWorkspace() {
         setSubmittingAll(false)
       }
     },
-    [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user]
+    [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user?.id]
   )
 
   function handleExpire() {

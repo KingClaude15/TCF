@@ -108,7 +108,9 @@ export default function EOSujetWorkspace() {
     } finally {
       setLoading(false)
     }
-  }, [sujetNumber, user])
+  // Depend on user?.id (stable), not the whole user object — avoids
+  // full reload on Supabase TOKEN_REFRESHED / tab-focus events.
+  }, [sujetNumber, user?.id])
 
   useEffect(() => {
     load()
@@ -120,7 +122,7 @@ export default function EOSujetWorkspace() {
       if (notif.link === `/eo/${sujetNumber}`) load()
     })
     return unsubscribe
-  }, [phase, user, sujetNumber, load])
+  }, [phase, user?.id, sujetNumber, load])
 
   const task = tasks[step]
   const examDurationSeconds =
@@ -276,7 +278,7 @@ export default function EOSujetWorkspace() {
         setSubmittingAll(false)
       }
     },
-    [tasks, recordings, feedbacks, taskStatuses, taskErrors, existingAudioUrls, draftAudioPaths, sujetNumber, timerKey, user]
+    [tasks, recordings, feedbacks, taskStatuses, taskErrors, existingAudioUrls, draftAudioPaths, sujetNumber, timerKey, user?.id]
   )
 
   function handleExpire() {

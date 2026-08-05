@@ -34,7 +34,7 @@ export default function EEWorkspace() {
     } finally {
       setLoading(false)
     }
-  }, [user, topicNumber])
+  }, [user?.id, topicNumber])
 
   useEffect(() => {
     load()
