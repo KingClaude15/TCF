@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen } from 'lucide-react'
 import clsx from 'clsx'
 
 /**
- * Interactive lesson: theory → examples → quiz.
- * onComplete(lessonId) called when quiz finished successfully or marked done.
+ * Interactive lesson: theory → examples → quiz → recap with explanations.
+ * onComplete(lessonId) when quiz finished.
  */
 export default function LessonPlayer({ lesson, completed, onBack, onComplete }) {
   const [step, setStep] = useState(0) // 0 theory, 1 examples, 2 quiz, 3 done
   const [qi, setQi] = useState(0)
   const [picked, setPicked] = useState(null)
   const [score, setScore] = useState({ ok: 0, total: 0 })
+  const [history, setHistory] = useState([]) // { q, options, answer, picked, explain, correct }
 
   const quiz = lesson.quiz || []
   const current = quiz[qi]
@@ -20,6 +21,7 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     setQi(0)
     setPicked(null)
     setScore({ ok: 0, total: 0 })
+    setHistory([])
   }
 
   function answer(idx) {
@@ -27,6 +29,17 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     setPicked(idx)
     const correct = idx === current.answer
     setScore((s) => ({ ok: s.ok + (correct ? 1 : 0), total: s.total + 1 }))
+    setHistory((h) => [
+      ...h,
+      {
+        q: current.q,
+        options: current.options,
+        answer: current.answer,
+        picked: idx,
+        explain: current.explain,
+        correct,
+      },
+    ])
   }
 
   function nextQuestion() {
@@ -195,7 +208,8 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
                   onClick={() => answer(idx)}
                   className={clsx(
                     'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors',
-                    !show && 'border-slate-200 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:hover:bg-brand-950/30',
+                    !show &&
+                      'border-slate-200 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:hover:bg-brand-950/30',
                     show && isRight && 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40',
                     show && isPicked && !isRight && 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40'
                   )}
@@ -208,10 +222,16 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
             })}
           </div>
           {picked !== null && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-600 dark:text-slate-400">{current.explain}</p>
+            <div className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
+              <p className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <BookOpen size={16} className="mt-0.5 shrink-0 text-brand-600" />
+                <span>
+                  <strong className="text-brand-700 dark:text-brand-300">Explication : </strong>
+                  {current.explain}
+                </span>
+              </p>
               <button type="button" className="btn-primary w-full sm:w-auto" onClick={nextQuestion}>
-                {qi + 1 < quiz.length ? 'Question suivante' : 'Terminer la leçon'} <ChevronRight size={16} />
+                {qi + 1 < quiz.length ? 'Question suivante' : 'Voir le bilan'} <ChevronRight size={16} />
               </button>
             </div>
           )}
@@ -219,13 +239,63 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
       )}
 
       {step === 3 && (
-        <div className="card space-y-4 p-6 text-center">
-          <CheckCircle2 size={40} className="mx-auto text-emerald-500" />
-          <h3 className="font-heading text-lg font-bold">Leçon terminée</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Score quiz : {score.ok} / {score.total}
-            {score.total > 0 ? ` (${Math.round((score.ok / score.total) * 100)} %)` : ''}
-          </p>
+        <div className="space-y-4">
+          <div className="card space-y-3 p-6 text-center">
+            <CheckCircle2 size={40} className="mx-auto text-emerald-500" />
+            <h3 className="font-heading text-lg font-bold">Leçon terminée</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Score : {score.ok} / {score.total}
+              {score.total > 0 ? ` (${Math.round((score.ok / score.total) * 100)} %)` : ''}
+            </p>
+          </div>
+
+          {history.length > 0 && (
+            <div className="card space-y-4 p-5">
+              <h4 className="font-heading text-base font-bold text-ink-900 dark:text-white">
+                Bilan détaillé des réponses
+              </h4>
+              <div className="space-y-4">
+                {history.map((h, i) => (
+                  <div
+                    key={i}
+                    className={clsx(
+                      'rounded-xl border p-4 text-sm',
+                      h.correct
+                        ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20'
+                        : 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20'
+                    )}
+                  >
+                    <div className="mb-2 flex items-start gap-2">
+                      {h.correct ? (
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+                      ) : (
+                        <XCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
+                      )}
+                      <p className="font-medium text-ink-900 dark:text-white">
+                        {i + 1}. {h.q}
+                      </p>
+                    </div>
+                    <p className="ml-6 text-slate-600 dark:text-slate-400">
+                      Ta réponse : <span className="font-medium">{h.options[h.picked]}</span>
+                      {!h.correct && (
+                        <>
+                          {' '}
+                          · Correct :{' '}
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            {h.options[h.answer]}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                    <p className="ml-6 mt-2 text-slate-700 dark:text-slate-300">
+                      <strong>Pourquoi :</strong> {h.explain}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button type="button" className="btn-primary" onClick={onBack}>
             Retour aux modules
           </button>

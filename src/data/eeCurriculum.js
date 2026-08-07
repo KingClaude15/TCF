@@ -3,7 +3,10 @@
  * Progress tracked via learning_item_progress (item_type = 'lesson').
  */
 
-export const EE_CURRICULUM = [
+import { EE_ERROR_BANK_MODULES } from './eeErrorBank'
+import { EXTRA_LESSONS } from './eeErrorBankExtra'
+
+const BASE_CURRICULUM = [
   {
     id: 'accords',
     title: 'Les accords',
@@ -1123,6 +1126,16 @@ export const EE_CURRICULUM = [
   },
 
 ]
+
+function withExtras(modules) {
+  return modules.map((m) => {
+    const extra = EXTRA_LESSONS[m.id]
+    if (!extra) return m
+    return { ...m, lessons: [...m.lessons, ...extra] }
+  })
+}
+
+export const EE_CURRICULUM = [...BASE_CURRICULUM, ...withExtras(EE_ERROR_BANK_MODULES)]
 
 export function getAllLessons() {
   return EE_CURRICULUM.flatMap((m) =>
