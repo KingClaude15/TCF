@@ -31,6 +31,7 @@ const NAV_GROUPS = [
       { to: '/co', label: 'Compréhension Orale', icon: Headphones },
       { to: '/ce', label: 'Compréhension Écrite', icon: BookOpen },
       { to: '/ee', label: 'Expression Écrite', icon: PenLine },
+      { to: '/ee/methodologie', label: 'Méthodologie EE', icon: BookOpen },
       { to: '/eo', label: 'Expression Orale', icon: Mic },
     ],
   },

@@ -24,6 +24,7 @@ const COQuiz           = lazy(() => import('./pages/COQuiz'))
 const CE               = lazy(() => import('./pages/CE'))
 const CEQuiz           = lazy(() => import('./pages/CEQuiz'))
 const EE               = lazy(() => import('./pages/EE'))
+const EEMethodologie   = lazy(() => import('./pages/EEMethodologie'))
 const EESujetWorkspace = lazy(() => import('./pages/EESujetWorkspace'))
 const EO               = lazy(() => import('./pages/EO'))
 const EOSujetWorkspace = lazy(() => import('./pages/EOSujetWorkspace'))
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="/ce"         element={<CE />} />
               <Route path="/ce/:seriesNumber" element={<CEQuiz />} />
               <Route path="/ee"         element={<EE />} />
+              <Route path="/ee/methodologie" element={<EEMethodologie />} />
               <Route path="/ee/:sujetNumber"  element={<EESujetWorkspace />} />
               <Route path="/eo"         element={<EO />} />
               <Route path="/eo/:sujetNumber"  element={<EOSujetWorkspace />} />

@@ -12,6 +12,7 @@ const TITLES = {
   '/co':              'Compréhension Orale',
   '/ce':              'Compréhension Écrite',
   '/ee':              'Expression Écrite',
+  '/ee/methodologie': 'Méthodologie EE',
   '/learning-center': "Centre d'apprentissage",
   '/progress-coach':  'Coach IA',
   '/statistics':      'Statistics',

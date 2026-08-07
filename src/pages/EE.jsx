@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabaseClient'
 import StatCard from '../components/ui/StatCard'
 import EmptyState from '../components/ui/EmptyState'
 import PageHeader from '../components/ui/PageHeader'
-import { PenLine, Target, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { PenLine, Target, CheckCircle2, Circle, Clock, BookOpen } from 'lucide-react'
 import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
 
 export default function EE() {
@@ -55,6 +56,21 @@ export default function EE() {
         <StatCard icon={Target} label="Score EE moyen" value={avgScore ?? '—'} sublabel="sur 20" accent="ee" />
         <StatCard icon={Clock} label="Durée par sujet" value="60 min" sublabel="3 tâches, un seul chrono" accent="brand" />
       </div>
+
+      <Link
+        to="/ee/methodologie"
+        className="card card-hover flex items-center gap-4 p-4 text-left"
+      >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ee-light text-ee-dark dark:bg-pink-950 dark:text-pink-300">
+          <BookOpen size={20} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-ink-900 dark:text-white">Méthodologie Expression Écrite</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Structures des 3 tâches, checklists, connecteurs et gestion du temps — à lire avant de te lancer.
+          </p>
+        </div>
+      </Link>
 
       {sujets.length === 0 ? (
         <EmptyState icon={PenLine} title="Aucun sujet disponible" description="Un administrateur doit d'abord ajouter des sujets EE." />
