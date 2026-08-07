@@ -71,20 +71,28 @@ export default function LearningCenter() {
 
   async function handleMarkCard(cardKey, status) {
     setFlashcardProgress((p) => ({ ...p, [cardKey]: status }))
-    try {
-      await setItemProgress(user.id, cardKey, status, 'flashcard')
-    } catch {
+    const result = await setItemProgress(user.id, cardKey, status, 'flashcard')
+    if (!result.ok) {
       toast.error("Cette carte n'a pas pu être enregistrée — réessaie.")
+    } else if (!result.remote) {
+      // Saved locally; remote table may be missing — silent for flashcards
+      console.warn('Flashcard progress saved locally only:', result.errorMessage)
     }
   }
 
   async function handleCompleteLesson(lessonId) {
     setLessonProgress((p) => ({ ...p, [lessonId]: 'completed' }))
-    try {
-      await setItemProgress(user.id, lessonId, 'completed', 'lesson')
-      toast.success('Leçon enregistrée comme terminée')
-    } catch {
+    const result = await setItemProgress(user.id, lessonId, 'completed', 'lesson')
+    if (!result.ok) {
       toast.error("La progression n'a pas pu être sauvegardée.")
+      return
+    }
+    if (result.remote) {
+      toast.success('Leçon enregistrée comme terminée')
+    } else {
+      // Local save OK — don't scare the student; table may need SQL migration
+      toast.success('Leçon terminée (sauvegardée sur cet appareil)')
+      console.warn('Lesson progress saved locally only:', result.errorMessage)
     }
   }
 
