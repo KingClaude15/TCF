@@ -1,17 +1,62 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen, Sparkles } from 'lucide-react'
 import clsx from 'clsx'
+import { expandExplanation } from '../../lib/explanationHelper'
+
+function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
+  const block = expandExplanation(explain, { q, options, answer, picked, correct })
+
+  return (
+    <div className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/30">
+      <div className="flex items-start gap-2">
+        <BookOpen size={16} className="mt-0.5 shrink-0 text-brand-600" />
+        <div className="min-w-0 flex-1 space-y-2 text-sm">
+          {block.title && (
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+              {block.title}
+            </p>
+          )}
+          <p className="text-slate-800 dark:text-slate-200">
+            <strong className="text-brand-800 dark:text-brand-200">En bref : </strong>
+            {block.summary}
+          </p>
+          {!correct && block.correctAnswer && (
+            <p className="text-slate-700 dark:text-slate-300">
+              <span className="font-semibold text-red-600 dark:text-red-400">Ta réponse : </span>
+              {block.yourAnswer}
+              <span className="mx-2 text-slate-400">→</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300">Bonne réponse : </span>
+              {block.correctAnswer}
+            </p>
+          )}
+          {block.detail && (
+            <p className="leading-relaxed text-slate-700 dark:text-slate-300">
+              <strong>Pourquoi en détail : </strong>
+              {block.detail}
+            </p>
+          )}
+          {block.tip && (
+            <p className="flex items-start gap-2 rounded-lg bg-white/70 px-3 py-2 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
+              <Sparkles size={14} className="mt-0.5 shrink-0 text-gold-500" />
+              <span>{block.tip}</span>
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
- * Interactive lesson: theory → examples → quiz → recap with explanations.
- * onComplete(lessonId) when quiz finished.
+ * Interactive lesson: theory → examples → quiz → recap with detailed explanations.
+ * Explanations appear only after the student answers.
  */
 export default function LessonPlayer({ lesson, completed, onBack, onComplete }) {
-  const [step, setStep] = useState(0) // 0 theory, 1 examples, 2 quiz, 3 done
+  const [step, setStep] = useState(0)
   const [qi, setQi] = useState(0)
   const [picked, setPicked] = useState(null)
   const [score, setScore] = useState({ ok: 0, total: 0 })
-  const [history, setHistory] = useState([]) // { q, options, answer, picked, explain, correct }
+  const [history, setHistory] = useState([])
 
   const quiz = lesson.quiz || []
   const current = quiz[qi]
@@ -203,7 +248,7 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
               const show = picked !== null
               return (
                 <button
-                  key={opt}
+                  key={`${opt}-${idx}`}
                   type="button"
                   onClick={() => answer(idx)}
                   className={clsx(
@@ -221,15 +266,18 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
               )
             })}
           </div>
+
+          {/* Detailed explanation — only after answer */}
           {picked !== null && (
-            <div className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
-              <p className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-                <BookOpen size={16} className="mt-0.5 shrink-0 text-brand-600" />
-                <span>
-                  <strong className="text-brand-700 dark:text-brand-300">Explication : </strong>
-                  {current.explain}
-                </span>
-              </p>
+            <div className="space-y-3">
+              <ExplanationPanel
+                explain={current.explain}
+                q={current.q}
+                options={current.options}
+                answer={current.answer}
+                picked={picked}
+                correct={picked === current.answer}
+              />
               <button type="button" className="btn-primary w-full sm:w-auto" onClick={nextQuestion}>
                 {qi + 1 < quiz.length ? 'Question suivante' : 'Voir le bilan'} <ChevronRight size={16} />
               </button>
@@ -275,21 +323,16 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
                         {i + 1}. {h.q}
                       </p>
                     </div>
-                    <p className="ml-6 text-slate-600 dark:text-slate-400">
-                      Ta réponse : <span className="font-medium">{h.options[h.picked]}</span>
-                      {!h.correct && (
-                        <>
-                          {' '}
-                          · Correct :{' '}
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                            {h.options[h.answer]}
-                          </span>
-                        </>
-                      )}
-                    </p>
-                    <p className="ml-6 mt-2 text-slate-700 dark:text-slate-300">
-                      <strong>Pourquoi :</strong> {h.explain}
-                    </p>
+                    <div className="ml-6">
+                      <ExplanationPanel
+                        explain={h.explain}
+                        q={h.q}
+                        options={h.options}
+                        answer={h.answer}
+                        picked={h.picked}
+                        correct={h.correct}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
