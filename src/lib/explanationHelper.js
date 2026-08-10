@@ -4,6 +4,7 @@
  */
 
 const RULE_BANK = [
+  // More specific rules first to avoid broad keyword collisions (e.g. "plur" matching everything).
   {
     keys: ['subjonctif', 'subj', 'bien que', 'quoique', 'il faut que', 'pour que', 'afin que', 'avant que', 'pourvu que', 'à condition que', 'doute', 'crains', 'souhaite', 'indispensable', 'nécessaire', 'essentiel', 'dommage'],
     title: 'Subjonctif vs indicatif',
@@ -23,13 +24,54 @@ const RULE_BANK = [
     tip: 'Relis la phrase en te demandant : « est-ce un décor ou un événement ? » puis « y a-t-il une action encore plus ancienne ? ».',
   },
   {
-    keys: ['accord', 'cod avant', 'participe', 'être +', 'avec avoir', 'fém', 'plur'],
+    keys: [
+      'participe passé', 'cod avant', 'être +', 'avec avoir', 's’est ', 'est allée', 'est parti',
+      'les lettres que', 'que j’ai écrit', 'que j’ai fait', 'accord du participe',
+      'cod fém', 'cod = les', 'être + elle', 'être + nous', 'pas d’accord', 'partie', 'faites', 'arrivés',
+      'qu’ils ont', 'que j’ai', 's’est ___ les',
+    ],
     title: 'Accord du participe passé',
     detail:
       'Avec être, le participe s’accorde avec le sujet (elle est allée). ' +
       'Avec avoir, il s’accorde seulement si le COD est placé avant le verbe (les lettres que j’ai écrites). ' +
       'Aux pronominaux, vérifie si le pronom est COD ou COI.',
     tip: 'Pose la question « quoi / qui ? » juste avant le verbe : si la réponse est avant le verbe → souvent accord.',
+  },
+  {
+    keys: [
+      'pluriel de', 'genre et pluriel', 'travaux', 'journaux', 'chevaux', 'problème est masculin',
+      'un grand erreur', 'des chevals', 'pluriel irrégulier',
+    ],
+    title: 'Genre et pluriel des noms',
+    detail:
+      'Le genre (masculin / féminin) des noms doit être mémorisé : un problème, une erreur, un journal… ' +
+      'Certains pluriels sont irréguliers : travail → travaux, journal → journaux, cheval → chevaux, œil → yeux. ' +
+      'L’article et l’adjectif s’accordent en genre et en nombre avec le nom.',
+    tip: 'Pour les noms en -al / -ail, vérifie s’ils font -aux au pluriel (travail, journal, cheval) ou s’ils restent réguliers (récital → récitals).',
+  },
+  {
+    keys: [
+      'adjectif', 'mesures strict', 'restée calme', 'bleu foncé', 'couleur composée',
+      'accord de l’adjectif', 'féminin pluriel →', 'elle est restée', 'strictes', 'calme',
+    ],
+    title: 'Accord de l’adjectif',
+    detail:
+      'L’adjectif s’accorde en genre et en nombre avec le nom qu’il qualifie. ' +
+      'Quand plusieurs noms de genres différents sont qualifiés, on met souvent le masculin pluriel. ' +
+      'Les couleurs composées (bleu foncé, vert clair) restent généralement invariables.',
+    tip: 'Identifie le nom « chef de file » de l’adjectif, puis applique genre + nombre. Pour les couleurs, demande-toi si c’est un simple adjectif ou une locution figée.',
+  },
+  {
+    keys: [
+      'sujet–verbe', 'sujet pluriel', 'antécédent', 'la majorité', 'peu d’', 'c’est nous qui',
+      'ce sont eux qui', 'accord sujet', 'sont.', 'sommes.', 'étaient.',
+    ],
+    title: 'Accord sujet–verbe',
+    detail:
+      'Le verbe s’accorde en personne et en nombre avec son sujet. ' +
+      'Avec « qui », le verbe s’accorde avec l’antécédent (c’est nous qui sommes…). ' +
+      'Attention aux sujets collectifs (la majorité + singulier) et aux expressions comme « peu de + pluriel ».',
+    tip: 'Repère le vrai sujet (parfois éloigné ou inversé) avant de conjuguer. Avec « qui », remplace mentalement par l’antécédent.',
   },
   {
     keys: ['dont', 'lequel', 'laquelle', 'auquel', 'duquel', 'relatif', 'où '],
