@@ -25,6 +25,26 @@ const RULE_BANK = [
   },
   {
     keys: [
+      'homophone',
+      'ou bien', 'verbe être', 'verbe avoir', 'conjonction', 'coordination',
+      'possessif', 'démonstratif',
+      'remplace par « était »', 'remplace par « avait »', 'remplace par « ou bien »',
+      'remplace par « étaient »', 'c’est →', 's’est →',
+      'et » coordonne', 'est » est le verbe', 'ou » exprime', 'où » interroge',
+      'a » est le verbe', 'à » est la préposition', 'sont » est le verbe',
+      'son » est le', 'ces »', 'ses »',
+    ],
+    title: 'Homophones grammaticaux',
+    detail:
+      'Ce sont des mots qui se prononcent pareil mais s’écrivent différemment. ' +
+      'Pour choisir : teste la substitution. ' +
+      'ou → « ou bien » ; où = lieu/moment ; a → « avait » ; à = préposition ; ' +
+      'est → « était » ; et = coordination ; sont → « étaient » ; son = possessif ; ' +
+      'on → « l’on » ; ont = verbe avoir.',
+    tip: 'En relecture EE, contrôle systématiquement a/à, et/est, on/ont, ou/où : ce sont les fautes les plus visibles et les plus pénalisées.',
+  },
+  {
+    keys: [
       'participe passé', 'cod avant', 'être +', 'avec avoir', 's’est ', 'est allée', 'est parti',
       'les lettres que', 'que j’ai écrit', 'que j’ai fait', 'accord du participe',
       'cod fém', 'cod = les', 'être + elle', 'être + nous', 'pas d’accord', 'partie', 'faites', 'arrivés',
@@ -63,8 +83,8 @@ const RULE_BANK = [
   },
   {
     keys: [
-      'sujet–verbe', 'sujet pluriel', 'antécédent', 'la majorité', 'peu d’', 'c’est nous qui',
-      'ce sont eux qui', 'accord sujet', 'sont.', 'sommes.', 'étaient.',
+      'sujet–verbe', 'antécédent', 'la majorité', 'peu d’', 'c’est nous qui',
+      'ce sont eux qui', 'accord sujet', 'accord sujet–verbe',
     ],
     title: 'Accord sujet–verbe',
     detail:
@@ -73,8 +93,9 @@ const RULE_BANK = [
       'Attention aux sujets collectifs (la majorité + singulier) et aux expressions comme « peu de + pluriel ».',
     tip: 'Repère le vrai sujet (parfois éloigné ou inversé) avant de conjuguer. Avec « qui », remplace mentalement par l’antécédent.',
   },
+
   {
-    keys: ['dont', 'lequel', 'laquelle', 'auquel', 'duquel', 'relatif', 'où '],
+    keys: ['dont', 'lequel', 'laquelle', 'auquel', 'duquel', 'relatif', 'pronom relatif'],
     title: 'Pronoms relatifs',
     detail:
       'qui = sujet de la relative. que = COD. dont = complément introduit par de. ' +
@@ -106,14 +127,6 @@ const RULE_BANK = [
       'Passif = être + participe passé. Le participe s’accorde avec le nouveau sujet. ' +
       'L’agent s’introduit souvent par « par ». Utile en EE pour varier le style et rester neutre.',
     tip: 'Repère le COD de la phrase active : il devient sujet du passif, d’où l’accord.',
-  },
-  {
-    keys: ['homophone', 'ou /', 'où', 'a /', 'à', 'et /', 'est', 'son /', 'sont', 'ces /', 'ses', 'on /', 'ont', 'c’est', 's’est'],
-    title: 'Homophones grammaticaux',
-    detail:
-      'Ce sont des mots qui se prononcent pareil mais s’écrivent différemment. ' +
-      'La substitution aide : ou → « ou bien » ; a → « avait » ; est → « était » ; sont → « étaient » ; on → « l’on ».',
-    tip: 'En relecture EE, contrôle systématiquement a/à, et/est, on/ont, ou/où : ce sont les fautes les plus visibles.',
   },
   {
     keys: ['connecteur', 'cependant', 'toutefois', 'néanmoins', 'certes', 'par conséquent', 'malgré', 'concession'],

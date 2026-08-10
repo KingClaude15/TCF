@@ -890,12 +890,48 @@ const BASE_CURRICULUM = [
           { bad: 'Ou vas-tu ?', good: 'Où vas-tu ?' },
         ],
         quiz: [
-          { q: '« Tu préfères le thé ___ le café ? »', options: ['ou', 'où'], answer: 0, explain: 'Choix → ou.' },
-          { q: '« ___ habites-tu ? »', options: ['Ou', 'Où'], answer: 1, explain: 'Lieu → Où.' },
-          { q: '« Le jour ___ nous nous sommes rencontrés… »', options: ['ou', 'où'], answer: 1, explain: 'Moment relatif → où.' },
-          { q: '« Thé ___ café, peu importe. »', options: ['ou', 'où'], answer: 0, explain: 'Alternative → ou.' },
-          { q: '« Je ne sais pas ___ ranger ce dossier. »', options: ['ou', 'où'], answer: 1, explain: 'Lieu → où.' },
-          { q: '« Paris ___ Lyon ? »', options: ['ou', 'où'], answer: 0, explain: 'Choix → ou.' },
+          {
+            q: '« Tu préfères le thé ___ le café ? »',
+            options: ['ou', 'où'],
+            answer: 0,
+            explain:
+              '« ou » exprime un choix entre deux possibilités (thé ou café). On peut le remplacer par « ou bien ». « où » indiquerait un lieu ou un moment, ce qui n’a pas de sens ici.',
+          },
+          {
+            q: '« ___ habites-tu ? »',
+            options: ['Ou', 'Où'],
+            answer: 1,
+            explain:
+              '« Où » interroge sur le lieu. La question porte sur l’endroit où tu habites. « Ou » (choix) ne convient pas en tête de question sans alternative.',
+          },
+          {
+            q: '« Le jour ___ nous nous sommes rencontrés… »',
+            options: ['ou', 'où'],
+            answer: 1,
+            explain:
+              '« où » est le pronom relatif de temps/lieu : il reprend « le jour ». On ne peut pas le remplacer par « ou bien ».',
+          },
+          {
+            q: '« Thé ___ café, peu importe. »',
+            options: ['ou', 'où'],
+            answer: 0,
+            explain:
+              '« ou » marque l’alternative (thé ou café). Remplace par « ou bien » : la phrase reste correcte. « où » n’a pas de rôle de lieu ici.',
+          },
+          {
+            q: '« Je ne sais pas ___ ranger ce dossier. »',
+            options: ['ou', 'où'],
+            answer: 1,
+            explain:
+              '« où » indique le lieu (où ranger = dans quel endroit). « ou » exprimerait un choix, ce qui ne correspond pas au sens de la phrase.',
+          },
+          {
+            q: '« Paris ___ Lyon ? »',
+            options: ['ou', 'où'],
+            answer: 0,
+            explain:
+              '« ou » pose une alternative entre deux villes. C’est un choix. « où » interrogerait un lieu, mais la structure est celle d’une alternative.',
+          },
         ],
       },
       {
@@ -912,12 +948,48 @@ const BASE_CURRICULUM = [
           { bad: 'Je vais a Paris.', good: 'Je vais à Paris.' },
         ],
         quiz: [
-          { q: '« Elle ___ trois frères. »', options: ['a', 'à'], answer: 0, explain: 'Verbe avoir → a.' },
-          { q: '« Nous allons ___ Montréal. »', options: ['a', 'à'], answer: 1, explain: 'Préposition → à.' },
-          { q: '« Il ___ oublié son dossier. »', options: ['a', 'à'], answer: 0, explain: 'avoir → a.' },
-          { q: '« De 9 h ___ 12 h. »', options: ['a', 'à'], answer: 1, explain: 'Préposition temporelle → à.' },
-          { q: '« Qui ___ dit cela ? »', options: ['a', 'à'], answer: 0, explain: 'Verbe → a.' },
-          { q: '« Je pense ___ toi. »', options: ['a', 'à'], answer: 1, explain: 'penser à → à.' },
+          {
+            q: '« Elle ___ trois frères. »',
+            options: ['a', 'à'],
+            answer: 0,
+            explain:
+              '« a » est le verbe avoir (elle a = elle possède). On peut le remplacer par « avait » : « Elle avait trois frères ». « à » est une préposition et ne conjugue pas.',
+          },
+          {
+            q: '« Nous allons ___ Montréal. »',
+            options: ['a', 'à'],
+            answer: 1,
+            explain:
+              '« à » est la préposition de lieu (aller à + ville). « a » (verbe avoir) ne s’accorde pas avec « nous allons ».',
+          },
+          {
+            q: '« Il ___ oublié son dossier. »',
+            options: ['a', 'à'],
+            answer: 0,
+            explain:
+              '« a » forme le passé composé (avoir + oublié). Remplace par « avait » : la phrase reste correcte. « à » casserait le temps composé.',
+          },
+          {
+            q: '« De 9 h ___ 12 h. »',
+            options: ['a', 'à'],
+            answer: 1,
+            explain:
+              '« à » est la préposition qui indique la limite temporelle (de … à …). « a » (verbe) n’a pas sa place dans cette expression.',
+          },
+          {
+            q: '« Qui ___ dit cela ? »',
+            options: ['a', 'à'],
+            answer: 0,
+            explain:
+              '« a » est le verbe avoir dans le passé composé (qui a dit). On peut tester avec « avait ». « à » serait une préposition incorrecte ici.',
+          },
+          {
+            q: '« Je pense ___ toi. »',
+            options: ['a', 'à'],
+            answer: 1,
+            explain:
+              'Le verbe « penser » se construit avec la préposition « à » (penser à quelqu’un). « a » (verbe avoir) ne convient pas après « pense ».',
+          },
         ],
       },
       {
@@ -934,12 +1006,48 @@ const BASE_CURRICULUM = [
           { bad: 'Paul est Marie arrivent.', good: 'Paul et Marie arrivent.' },
         ],
         quiz: [
-          { q: '« Le rapport ___ clair. »', options: ['et', 'est'], answer: 1, explain: 'Verbe être → est.' },
-          { q: '« Grammaire ___ vocabulaire comptent. »', options: ['et', 'est'], answer: 0, explain: 'Liaison → et.' },
-          { q: '« Elle ___ arrivée hier. »', options: ['et', 'est'], answer: 1, explain: 'être → est.' },
-          { q: '« Lecture ___ écriture. »', options: ['et', 'est'], answer: 0, explain: 'et = and.' },
-          { q: '« C’ ___ une bonne idée. »', options: ['et', 'est'], answer: 1, explain: 'c’est → est.' },
-          { q: '« Le café ___ le thé sont prêts. »', options: ['et', 'est'], answer: 0, explain: 'Coordination → et.' },
+          {
+            q: '« Le rapport ___ clair. »',
+            options: ['et', 'est'],
+            answer: 1,
+            explain:
+              '« est » est le verbe être (3e personne du singulier). On peut le remplacer par « était » : « Le rapport était clair ». « et » (conjonction) n’a aucun sens dans cette phrase.',
+          },
+          {
+            q: '« Grammaire ___ vocabulaire comptent. »',
+            options: ['et', 'est'],
+            answer: 0,
+            explain:
+              '« et » coordonne les deux sujets « Grammaire » et « vocabulaire ». Le verbe « comptent » au pluriel le confirme. « est » (verbe être) ne convient pas : on ne dirait pas « Grammaire est vocabulaire comptent ».',
+          },
+          {
+            q: '« Elle ___ arrivée hier. »',
+            options: ['et', 'est'],
+            answer: 1,
+            explain:
+              '« est » est l’auxiliaire être du passé composé (« est arrivée »). Remplace par « était » : la phrase reste correcte. « et » serait une conjonction et casserait la construction.',
+          },
+          {
+            q: '« Lecture ___ écriture. »',
+            options: ['et', 'est'],
+            answer: 0,
+            explain:
+              '« et » relie deux noms (coordination). C’est le sens de « and ». « est » transformerait la phrase en « Lecture est écriture », ce qui change complètement le sens.',
+          },
+          {
+            q: '« C’ ___ une bonne idée. »',
+            options: ['et', 'est'],
+            answer: 1,
+            explain:
+              '« c’est » = ce + est (verbe être). C’est la forme figée de présentation. « et » ne forme pas « c’et ».',
+          },
+          {
+            q: '« Le café ___ le thé sont prêts. »',
+            options: ['et', 'est'],
+            answer: 0,
+            explain:
+              '« et » coordonne les deux sujets « Le café » et « le thé ». Le verbe « sont » au pluriel le prouve. Avec « est », le sujet serait singulier, ce qui ne correspond pas à « sont prêts ».',
+          },
         ],
       },
       {
@@ -956,12 +1064,48 @@ const BASE_CURRICULUM = [
           { bad: 'Il a oublié sont sac.', good: 'Il a oublié son sac.' },
         ],
         quiz: [
-          { q: '« Les résultats ___ excellents. »', options: ['son', 'sont'], answer: 1, explain: 'Verbe → sont.' },
-          { q: '« Il a pris ___ manteau. »', options: ['son', 'sont'], answer: 0, explain: 'Possessif → son.' },
-          { q: '« Elles ___ d’accord. »', options: ['son', 'sont'], answer: 1, explain: 'être pluriel → sont.' },
-          { q: '« ___ avis compte. »', options: ['Son', 'Sont'], answer: 0, explain: 'Possessif → Son.' },
-          { q: '« Où ___ les clés ? »', options: ['son', 'sont'], answer: 1, explain: 'Verbe → sont.' },
-          { q: '« Chacun défend ___ point de vue. »', options: ['son', 'sont'], answer: 0, explain: 'Possessif → son.' },
+          {
+            q: '« Les résultats ___ excellents. »',
+            options: ['son', 'sont'],
+            answer: 1,
+            explain:
+              '« sont » est le verbe être au pluriel (ils/elles sont). On peut le remplacer par « étaient ». « son » (possessif) ne s’accorde pas avec un sujet pluriel « les résultats ».',
+          },
+          {
+            q: '« Il a pris ___ manteau. »',
+            options: ['son', 'sont'],
+            answer: 0,
+            explain:
+              '« son » est le déterminant possessif (son manteau = le manteau de lui). « sont » est un verbe et ne peut pas précéder un nom de cette façon.',
+          },
+          {
+            q: '« Elles ___ d’accord. »',
+            options: ['son', 'sont'],
+            answer: 1,
+            explain:
+              '« sont » conjugue le verbe être avec le sujet « Elles ». Test : « Elles étaient d’accord ». « son » (possessif) n’a pas de place ici.',
+          },
+          {
+            q: '« ___ avis compte. »',
+            options: ['Son', 'Sont'],
+            answer: 0,
+            explain:
+              '« Son » est le possessif qui détermine « avis » (son avis = l’avis de quelqu’un). « Sont » est un verbe et ne peut pas commencer cette phrase comme déterminant.',
+          },
+          {
+            q: '« Où ___ les clés ? »',
+            options: ['son', 'sont'],
+            answer: 1,
+            explain:
+              '« sont » est le verbe (où sont = where are). Remplace par « étaient » : la phrase reste correcte. « son » (possessif) ne conjugue pas.',
+          },
+          {
+            q: '« Chacun défend ___ point de vue. »',
+            options: ['son', 'sont'],
+            answer: 0,
+            explain:
+              '« son » est le possessif qui s’accorde avec « point de vue » (le point de vue de chacun). « sont » serait un verbe incorrect dans cette position.',
+          },
         ],
       },
       {
