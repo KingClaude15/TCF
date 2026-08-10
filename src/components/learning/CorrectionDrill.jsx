@@ -1,17 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Eye, ChevronRight, RotateCcw, BookOpen, Sparkles } from 'lucide-react'
 import { categoryLabel } from '../../services/learningCenterService'
 import { expandDrillExplanation } from '../../lib/explanationHelper'
 
+const DRILL_KEY = 'tcf_correction_drill_session'
+
+function loadDrillSession() {
+  try {
+    const raw = localStorage.getItem(DRILL_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDrillSession(state) {
+  try {
+    localStorage.setItem(DRILL_KEY, JSON.stringify(state))
+  } catch {
+    // ignore
+  }
+}
+
 export default function CorrectionDrill({ drills }) {
-  const [index, setIndex] = useState(0)
-  const [attempt, setAttempt] = useState('')
-  const [revealed, setRevealed] = useState(false)
-  const [correctCount, setCorrectCount] = useState(0)
-  const [answeredCount, setAnsweredCount] = useState(0)
+  const saved = loadDrillSession()
+  const safeIndex = () => {
+    if (!drills?.length) return 0
+    const i = typeof saved?.index === 'number' ? saved.index : 0
+    return ((i % drills.length) + drills.length) % drills.length
+  }
+
+  const [index, setIndex] = useState(safeIndex)
+  const [attempt, setAttempt] = useState(() => saved?.attempt || '')
+  const [revealed, setRevealed] = useState(() => Boolean(saved?.revealed))
+  const [correctCount, setCorrectCount] = useState(() => saved?.correctCount || 0)
+  const [answeredCount, setAnsweredCount] = useState(() => saved?.answeredCount || 0)
 
   const drill = drills[index]
   const detail = drill ? expandDrillExplanation(drill) : null
+
+  useEffect(() => {
+    saveDrillSession({ index, attempt, revealed, correctCount, answeredCount })
+  }, [index, attempt, revealed, correctCount, answeredCount])
 
   function reveal() {
     setRevealed(true)
@@ -74,7 +104,6 @@ export default function CorrectionDrill({ drills }) {
               {drill.correction}
             </div>
 
-            {/* Detailed explanation only after reveal */}
             <div className="space-y-2 rounded-xl border border-brand-100 bg-brand-50/60 p-4 text-sm dark:border-brand-900 dark:bg-brand-950/30">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
                 <BookOpen size={14} />

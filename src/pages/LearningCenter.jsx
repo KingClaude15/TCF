@@ -48,11 +48,41 @@ const COLOR = {
 export default function LearningCenter() {
   const { user } = useAuth()
   const { loading, eeSubmissions } = useChallengeData()
-  const [tab, setTab] = useState('parcours')
+  const [tab, setTab] = useState(() => {
+    try {
+      return localStorage.getItem('tcf_lc_tab') || 'parcours'
+    } catch {
+      return 'parcours'
+    }
+  })
   const [flashcardProgress, setFlashcardProgress] = useState({})
   const [lessonProgress, setLessonProgress] = useState({})
   const [progressLoading, setProgressLoading] = useState(true)
-  const [activeLessonId, setActiveLessonId] = useState(null)
+  const [activeLessonId, setActiveLessonId] = useState(() => {
+    try {
+      return localStorage.getItem('tcf_lc_active_lesson') || null
+    } catch {
+      return null
+    }
+  })
+
+  // Remember which lesson is open so a page refresh resumes the exercise
+  useEffect(() => {
+    try {
+      if (activeLessonId) localStorage.setItem('tcf_lc_active_lesson', activeLessonId)
+      else localStorage.removeItem('tcf_lc_active_lesson')
+    } catch {
+      // ignore
+    }
+  }, [activeLessonId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tcf_lc_tab', tab)
+    } catch {
+      // ignore
+    }
+  }, [tab])
 
   useEffect(() => {
     if (!user) return
@@ -98,6 +128,13 @@ export default function LearningCenter() {
 
   const stats = useMemo(() => curriculumStats(lessonProgress), [lessonProgress])
   const activeLesson = activeLessonId ? getLessonById(activeLessonId) : null
+
+  // Stale id after curriculum change
+  useEffect(() => {
+    if (activeLessonId && !getLessonById(activeLessonId)) {
+      setActiveLessonId(null)
+    }
+  }, [activeLessonId])
 
   const evaluated = eeSubmissions.filter((s) => s.ai_feedback?.[0])
   const weakCategories = topWeakCategories(eeSubmissions, 6)

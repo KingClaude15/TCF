@@ -1,7 +1,44 @@
-import { useMemo, useState } from 'react'
-import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen, Sparkles, RotateCcw } from 'lucide-react'
 import clsx from 'clsx'
 import { expandExplanation } from '../../lib/explanationHelper'
+
+const SESSION_PREFIX = 'tcf_lesson_session:'
+
+function sessionKey(lessonId) {
+  return `${SESSION_PREFIX}${lessonId}`
+}
+
+function loadSession(lessonId) {
+  try {
+    const raw = localStorage.getItem(sessionKey(lessonId))
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+function saveSession(lessonId, state) {
+  try {
+    localStorage.setItem(
+      sessionKey(lessonId),
+      JSON.stringify({ ...state, savedAt: Date.now() })
+    )
+  } catch {
+    // ignore quota
+  }
+}
+
+function clearSession(lessonId) {
+  try {
+    localStorage.removeItem(sessionKey(lessonId))
+  } catch {
+    // ignore
+  }
+}
 
 function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
   const block = expandExplanation(explain, { q, options, answer, picked, correct })
@@ -52,17 +89,53 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
  * Explanations appear only after the student answers.
  */
 export default function LessonPlayer({ lesson, completed, onBack, onComplete }) {
+  const quiz = lesson.quiz || []
+
   const [step, setStep] = useState(0)
   const [qi, setQi] = useState(0)
   const [picked, setPicked] = useState(null)
   const [score, setScore] = useState({ ok: 0, total: 0 })
   const [history, setHistory] = useState([])
+  const [hydrated, setHydrated] = useState(false)
 
-  const quiz = lesson.quiz || []
+  // Restore this lesson's session on mount / when switching lessons
+  useEffect(() => {
+    const saved = loadSession(lesson.id)
+    if (saved) {
+      setStep(typeof saved.step === 'number' ? saved.step : 0)
+      setQi(typeof saved.qi === 'number' ? saved.qi : 0)
+      setPicked(saved.picked !== undefined ? saved.picked : null)
+      setScore(saved.score || { ok: 0, total: 0 })
+      setHistory(Array.isArray(saved.history) ? saved.history : [])
+    } else {
+      setStep(0)
+      setQi(0)
+      setPicked(null)
+      setScore({ ok: 0, total: 0 })
+      setHistory([])
+    }
+    setHydrated(true)
+  }, [lesson.id])
+
   const current = quiz[qi]
+
+  // Persist in-progress exercise so refresh / tab switch does not reset it
+  useEffect(() => {
+    if (!hydrated) return
+    saveSession(lesson.id, { step, qi, picked, score, history })
+  }, [lesson.id, step, qi, picked, score, history, hydrated])
 
   function startQuiz() {
     setStep(2)
+    setQi(0)
+    setPicked(null)
+    setScore({ ok: 0, total: 0 })
+    setHistory([])
+  }
+
+  function restartLesson() {
+    clearSession(lesson.id)
+    setStep(0)
     setQi(0)
     setPicked(null)
     setScore({ ok: 0, total: 0 })
@@ -94,7 +167,13 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     } else {
       setStep(3)
       onComplete?.(lesson.id)
+      // Keep session so refresh still shows the bilan; clear only on explicit restart / leave
     }
+  }
+
+  function handleBack() {
+    // Keep session so reopening the same lesson resumes; parent only closes the player
+    onBack?.()
   }
 
   const steps = useMemo(
@@ -109,9 +188,14 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={onBack} className="btn-secondary">
+        <button type="button" onClick={handleBack} className="btn-secondary">
           <ArrowLeft size={16} /> Modules
         </button>
+        {(step > 0 || history.length > 0) && (
+          <button type="button" onClick={restartLesson} className="btn-secondary text-xs" title="Recommencer la leçon depuis le début">
+            <RotateCcw size={14} /> Recommencer
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{lesson.moduleTitle}</p>
           <h2 className="font-heading text-lg font-bold text-ink-900 dark:text-white">{lesson.title}</h2>
@@ -339,9 +423,14 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
             </div>
           )}
 
-          <button type="button" className="btn-primary" onClick={onBack}>
-            Retour aux modules
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={handleBack}>
+              Retour aux modules
+            </button>
+            <button type="button" className="btn-secondary" onClick={restartLesson}>
+              <RotateCcw size={14} /> Recommencer la leçon
+            </button>
+          </div>
         </div>
       )}
     </div>
