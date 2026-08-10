@@ -397,26 +397,146 @@ export const EE_ERROR_BANK_MODULES = [
           { bad: 'Le comité examinera les candidatures. → Les candidatures examinera…', good: 'Les candidatures seront examinées par le comité.' },
         ],
         quiz: [
-          { q: '« Les pommes que j’ai (acheter) ___ . »', options: ['acheté', 'achetée', 'achetées'], answer: 2, explain: 'COD fém. plur. avant → achetées.' },
-          { q: '« Elles se sont (téléphoner) ___ . »', options: ['téléphonées', 'téléphoné', 'téléphonés'], answer: 1, explain: 'COI → en général téléphoné.' },
-          { q: 'Passif : « Le comité examinera les candidatures. » →', options: ['Les candidatures examineront le comité', 'Les candidatures seront examinées par le comité', 'Les candidatures ont examiné'], answer: 1, explain: 'Passif futur.' },
-          { q: '« Elles se sont (laver) ___ les mains. »', options: ['lavées', 'lavé', 'lavée'], answer: 1, explain: 'COD après → lavé.' },
-          { q: '« Les mesures que le gouvernement a (proposer) ___ . »', options: ['proposé', 'proposée', 'proposées'], answer: 2, explain: 'COD avant → proposées.' },
-          { q: '« La loi a été (adopter) ___ . »', options: ['adopté', 'adoptée', 'adoptés'], answer: 1, explain: 'Sujet fém. au passif → adoptée.' },
-          { q: '« Les résultats seront (publier) ___ demain. »', options: ['publié', 'publiée', 'publiés'], answer: 2, explain: 'Accord avec résultats.' },
-          { q: '« Les erreurs que nous avons (corriger) ___ . »', options: ['corrigé', 'corrigée', 'corrigées'], answer: 2, explain: 'COD avant → corrigées.' },
-          { q: '« Elle s’est (faire) ___ mal. »', options: ['faite', 'fait', 'faits'], answer: 1, explain: 's’est fait mal → fait invariable souvent.' },
-          { q: '« Ils se sont (écrire) ___ des messages. »', options: ['écrits', 'écrit', 'écrites'], answer: 1, explain: 'COD après → écrit.' },
-          { q: '« La décision a été (prendre) ___ hier. »', options: ['pris', 'prise', 'prises'], answer: 1, explain: 'prise.' },
-          { q: '« Les lettres se sont (perdre) ___ . » (passif pronominal)', options: ['perdu', 'perdues', 'perdus'], answer: 1, explain: 'Accord avec lettres souvent.' },
-          { q: '« Nous nous sommes (parler) ___ . »', options: ['parlés', 'parlé', 'parlée'], answer: 1, explain: 'se parler → parlé.' },
-          { q: 'Passif : « On a annoncé les résultats. » →', options: ['Les résultats a annoncé', 'Les résultats ont été annoncés', 'On été annoncé les résultats'], answer: 1, explain: 'ont été annoncés.' },
-          { q: '« La mesure que j’ai (soutenir) ___ . »', options: ['soutenu', 'soutenue', 'soutenus'], answer: 1, explain: 'COD fém. avant → soutenue.' },
-          { q: '« Elles se sont (sourire) ___ . »', options: ['souries', 'souri', 'souris'], answer: 1, explain: 'souri invariable (COI).' },
-          { q: '« Les dossiers ont été (classer) ___ . »', options: ['classé', 'classée', 'classés'], answer: 2, explain: 'classés.' },
-          { q: '« Je les ai (voir) ___ . » (les = les filles)', options: ['vu', 'vue', 'vues'], answer: 2, explain: 'COD avant → vues.' },
-          { q: '« Elle s’est (apercevoir) ___ de l’erreur. »', options: ['aperçu', 'aperçue', 'aperçus'], answer: 1, explain: 'Accord avec elle souvent.' },
-          { q: '« Les règles que vous avez (énoncer) ___ . »', options: ['énoncé', 'énoncée', 'énoncées'], answer: 2, explain: 'énoncées.' },
+          {
+            q: '« Les pommes que j’ai (acheter) ___ . »',
+            options: ['acheté', 'achetée', 'achetées'],
+            answer: 2,
+            explain:
+              'Auxiliaire avoir + COD « les pommes » placé avant le verbe → accord. « pommes » est féminin pluriel, donc « achetées ». Sans le COD avant, on écrirait « j’ai acheté ».',
+          },
+          {
+            q: '« Elles se sont (téléphoner) ___ . »',
+            options: ['téléphonées', 'téléphoné', 'téléphonés'],
+            answer: 1,
+            explain:
+              '« se téléphoner » : le pronom « se » est COI (téléphoner à quelqu’un), pas COD. Avec un COI, le participe reste invariable → « téléphoné ».',
+          },
+          {
+            q: 'Passif : « Le comité examinera les candidatures. » →',
+            options: ['Les candidatures examineront le comité', 'Les candidatures seront examinées par le comité', 'Les candidatures ont examiné'],
+            answer: 1,
+            explain:
+              'Voix passive : le COD de la phrase active (« les candidatures ») devient sujet. Auxiliaire être au futur (« seront ») + participe accordé avec « candidatures » (fém. plur.) → « examinées ».',
+          },
+          {
+            q: '« Elles se sont (laver) ___ les mains. »',
+            options: ['lavées', 'lavé', 'lavée'],
+            answer: 1,
+            explain:
+              '« se laver les mains » : le COD réel est « les mains », placé après le verbe. Le pronom « se » est ici COI. COD après → pas d’accord → « lavé ».',
+          },
+          {
+            q: '« Les mesures que le gouvernement a (proposer) ___ . »',
+            options: ['proposé', 'proposée', 'proposées'],
+            answer: 2,
+            explain:
+              'Auxiliaire avoir. Le COD « les mesures » (féminin pluriel) est placé avant le verbe grâce à la relative « que… ». Donc accord → « proposées ». Pose la question : « a proposé quoi ? » → les mesures (avant le verbe).',
+          },
+          {
+            q: '« La loi a été (adopter) ___ . »',
+            options: ['adopté', 'adoptée', 'adoptés'],
+            answer: 1,
+            explain:
+              'Voix passive (être + participe). Le participe s’accorde avec le sujet « la loi » (féminin singulier) → « adoptée ».',
+          },
+          {
+            q: '« Les résultats seront (publier) ___ demain. »',
+            options: ['publié', 'publiée', 'publiés'],
+            answer: 2,
+            explain:
+              'Passif : être + participe. Le sujet « les résultats » est masculin pluriel → « publiés ». L’accord se fait toujours avec le sujet au passif.',
+          },
+          {
+            q: '« Les erreurs que nous avons (corriger) ___ . »',
+            options: ['corrigé', 'corrigée', 'corrigées'],
+            answer: 2,
+            explain:
+              'Avoir + COD « les erreurs » (fém. plur.) placé avant le verbe → accord → « corrigées ». Sans antéposition du COD, on écrirait « nous avons corrigé ».',
+          },
+          {
+            q: '« Elle s’est (faire) ___ mal. »',
+            options: ['faite', 'fait', 'faits'],
+            answer: 1,
+            explain:
+              'Locution « se faire mal » : le participe « fait » reste en pratique invariable. On n’accorde pas → « fait ».',
+          },
+          {
+            q: '« Ils se sont (écrire) ___ des messages. »',
+            options: ['écrits', 'écrit', 'écrites'],
+            answer: 1,
+            explain:
+              '« se écrire des messages » : le COD est « des messages », placé après le verbe. Le pronom « se » est COI. COD après → pas d’accord → « écrit ».',
+          },
+          {
+            q: '« La décision a été (prendre) ___ hier. »',
+            options: ['pris', 'prise', 'prises'],
+            answer: 1,
+            explain:
+              'Passif : être + participe. Le sujet « la décision » est féminin singulier → « prise ».',
+          },
+          {
+            q: '« Les lettres se sont (perdre) ___ . » (passif pronominal)',
+            options: ['perdu', 'perdues', 'perdus'],
+            answer: 1,
+            explain:
+              'Passif pronominal (« se perdre » = être perdu). Le participe s’accorde avec le sujet « les lettres » (fém. plur.) → « perdues ».',
+          },
+          {
+            q: '« Nous nous sommes (parler) ___ . »',
+            options: ['parlés', 'parlé', 'parlée'],
+            answer: 1,
+            explain:
+              '« se parler » : le pronom est COI (parler à quelqu’un). Avec un COI, le participe reste invariable → « parlé ».',
+          },
+          {
+            q: 'Passif : « On a annoncé les résultats. » →',
+            options: ['Les résultats a annoncé', 'Les résultats ont été annoncés', 'On été annoncé les résultats'],
+            answer: 1,
+            explain:
+              'Le COD « les résultats » devient sujet du passif. Auxiliaire être au passé composé pluriel (« ont été ») + participe accordé (masc. plur.) → « annoncés ».',
+          },
+          {
+            q: '« La mesure que j’ai (soutenir) ___ . »',
+            options: ['soutenu', 'soutenue', 'soutenus'],
+            answer: 1,
+            explain:
+              'Avoir + COD « la mesure » (féminin singulier) placé avant → accord → « soutenue ».',
+          },
+          {
+            q: '« Elles se sont (sourire) ___ . »',
+            options: ['souries', 'souri', 'souris'],
+            answer: 1,
+            explain:
+              '« se sourire » : le pronom est COI (sourire à quelqu’un). Participe invariable → « souri ».',
+          },
+          {
+            q: '« Les dossiers ont été (classer) ___ . »',
+            options: ['classé', 'classée', 'classés'],
+            answer: 2,
+            explain:
+              'Passif : être + participe. Sujet « les dossiers » masculin pluriel → « classés ».',
+          },
+          {
+            q: '« Je les ai (voir) ___ . » (les = les filles)',
+            options: ['vu', 'vue', 'vues'],
+            answer: 2,
+            explain:
+              'Avoir + COD « les » (qui reprend « les filles », fém. plur.) placé avant le verbe → accord → « vues ».',
+          },
+          {
+            q: '« Elle s’est (apercevoir) ___ de l’erreur. »',
+            options: ['aperçu', 'aperçue', 'aperçus'],
+            answer: 1,
+            explain:
+              '« s’apercevoir de » : le pronom « se » est COD (apercevoir soi-même). Accord avec le sujet « elle » → « aperçue ».',
+          },
+          {
+            q: '« Les règles que vous avez (énoncer) ___ . »',
+            options: ['énoncé', 'énoncée', 'énoncées'],
+            answer: 2,
+            explain:
+              'Avoir + COD « les règles » (fém. plur.) placé avant le verbe → accord → « énoncées ».',
+          },
         ],
       },
     ],

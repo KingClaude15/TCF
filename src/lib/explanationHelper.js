@@ -49,6 +49,8 @@ const RULE_BANK = [
       'les lettres que', 'que j’ai écrit', 'que j’ai fait', 'accord du participe',
       'cod fém', 'cod = les', 'être + elle', 'être + nous', 'pas d’accord', 'partie', 'faites', 'arrivés',
       'qu’ils ont', 'que j’ai', 's’est ___ les',
+      'auxiliaire avoir', 'placé avant le verbe', 'voix passive', 'passif :', 'passif pronominal',
+      'proposées', 'achetées', 'corrigées', 'soutenue', 'énoncées', 'téléphoné', 'invariable',
     ],
     title: 'Accord du participe passé',
     detail:
@@ -104,7 +106,7 @@ const RULE_BANK = [
     tip: 'Réécris la relative en deux phrases : la préposition qui apparaît guide le choix du relatif.',
   },
   {
-    keys: [' lui ', 'leur', 'cod', 'coi', 'pronom', ' en ', ' y '],
+    keys: [' lui ', 'leur ', 'pronom personnel', ' en ', ' y ', 'me/te/nous', 'le/la/les +'],
     title: 'Pronoms personnels (COD, COI, en, y)',
     detail:
       'COD : le / la / les. COI personne : lui / leur. ' +
@@ -147,6 +149,42 @@ const RULE_BANK = [
 ]
 
 /**
+ * Builds a concrete "why this answer" sentence when the stored explain is too short.
+ */
+function buildContextualDetail(summary, ctx, ruleDetail) {
+  const correct =
+    ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : null
+  const q = (ctx.q || '').trim()
+
+  const parts = []
+
+  // Always try to anchor the explanation to the actual question + answer
+  if (correct && q) {
+    // Avoid nesting « » if the question already uses them
+    const filled = q
+      .replace(/\s*___\s*/g, ` ${correct} `)
+      .replace(/\s+/g, ' ')
+      .trim()
+    const display = filled.startsWith('«') ? filled : `« ${filled} »`
+    parts.push(`Dans la phrase ${display}, la forme attendue est « ${correct} ».`)
+  } else if (correct) {
+    parts.push(`La bonne réponse est « ${correct} ».`)
+  }
+
+  // If the short summary already carries useful info, keep it
+  if (summary && summary.length > 8 && summary !== correct) {
+    parts.push(summary.endsWith('.') ? summary : summary + '.')
+  }
+
+  // Append the general rule as complementary method
+  if (ruleDetail) {
+    parts.push(ruleDetail)
+  }
+
+  return parts.join(' ')
+}
+
+/**
  * @param {string|object|null} explain
  * @param {{ q?: string, options?: string[], answer?: number, picked?: number, correct?: boolean }} ctx
  */
@@ -166,26 +204,38 @@ export function expandExplanation(explain, ctx = {}) {
     }
   }
 
+  const correctAnswer =
+    (explain && typeof explain === 'object' && explain.correctAnswer) ||
+    (ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : undefined)
+
+  // Long, already pedagogical summaries (rewritten explains) → use as-is
+  const isRichSummary = typeof summary === 'string' && summary.length >= 60
+
   if (explain && typeof explain === 'object') {
     return {
       summary: explain.summary || explain.text || summary,
       title: explain.title || matched?.title,
-      detail: explain.detail || matched?.detail,
+      detail:
+        explain.detail ||
+        (isRichSummary ? matched?.detail : buildContextualDetail(summary, ctx, matched?.detail)),
       tip: explain.tip || matched?.tip,
-      correctAnswer:
-        explain.correctAnswer ||
-        (ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : undefined),
+      correctAnswer,
       yourAnswer: ctx.options && ctx.picked != null ? ctx.options[ctx.picked] : undefined,
       correct: ctx.correct,
     }
   }
 
+  // String explain
   return {
-    summary,
+    // Prefer the rich summary when we have one; otherwise keep the short line
+    // and put the full justification in "detail"
+    summary: isRichSummary ? summary : summary,
     title: matched?.title,
-    detail: matched?.detail,
+    detail: isRichSummary
+      ? matched?.detail
+      : buildContextualDetail(summary, ctx, matched?.detail),
     tip: matched?.tip,
-    correctAnswer: ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : undefined,
+    correctAnswer,
     yourAnswer: ctx.options && ctx.picked != null ? ctx.options[ctx.picked] : undefined,
     correct: ctx.correct,
   }
