@@ -23,18 +23,27 @@ The button appears bottom-right (above the AI chat bubble).
 
 The frontend calls the Supabase Edge Function `ai-tutor-chat`.
 
+It uses the **same secrets** already used by `evaluate-essay` and `evaluate-eo`:
+
+| Secret            | Role                          |
+|-------------------|-------------------------------|
+| `GROQ_API_KEY`    | Primary (recommended)         |
+| `GEMINI_API_KEY`  | Optional fallback             |
+
 ### Deploy the function
 
 ```bash
-# From project root (requires Supabase CLI)
 supabase functions deploy ai-tutor-chat
-
-# Set your OpenAI key as a secret
-supabase secrets set OPENAI_API_KEY=sk-your-key-here
 ```
 
-The function source is already in:
-`supabase/functions/ai-tutor-chat/index.ts`
+You do **not** need a new key if you already set `GROQ_API_KEY` (or `GEMINI_API_KEY`) for essay evaluation.
+
+If you still need to set them:
+```bash
+supabase secrets set GROQ_API_KEY=gsk_your_key_here
+# optional fallback
+supabase secrets set GEMINI_API_KEY=AIza_your_key_here
+```
 
 ### What the user sees
 - Floating purple chat bubble (bottom-right) on every protected page
@@ -56,4 +65,3 @@ The function source is already in:
 - `src/App.jsx` (route + lazy import)
 - `src/components/layout/Sidebar.jsx` (nav item)
 - `src/components/layout/AppLayout.jsx` (widgets + title)
-

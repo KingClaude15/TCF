@@ -4,11 +4,12 @@ import { supabase } from '../lib/supabaseClient'
  * Send a message to the AI Tutor (TCF specialist).
  * Calls the Supabase Edge Function `ai-tutor-chat`.
  *
- * Deploy the function with:
- *   supabase functions deploy ai-tutor-chat
+ * The function uses the same secrets as evaluate-essay / evaluate-eo:
+ *   GROQ_API_KEY  (primary)
+ *   GEMINI_API_KEY (optional fallback)
  *
- * And set OPENAI_API_KEY as a secret:
- *   supabase secrets set OPENAI_API_KEY=sk-...
+ * Deploy:
+ *   supabase functions deploy ai-tutor-chat
  *
  * @param {string} message - User question
  * @param {Array<{role: string, content: string}>} history - Previous messages (optional)
