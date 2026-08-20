@@ -520,13 +520,21 @@ export default function EESujetWorkspace() {
         </div>
       )}
 
-      <div>
+      <div
+        className="select-none"
+        onCopy={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <span className="text-xs font-bold uppercase text-ee-DEFAULT">
           Sujet {sujet.sujet_number} — {task.taskLabel}
         </span>
         <h2 className="mt-1 whitespace-pre-line text-base font-bold leading-snug">{task.prompt}</h2>
         <p className="mt-1 text-xs text-slate-400">
           Longueur attendue : {task.minWords}–{task.maxWords} mots
+        </p>
+        <p className="mt-1 text-[11px] text-slate-400 italic">
+          Copie du sujet désactivée — rédige ta réponse sans coller de texte externe.
         </p>
       </div>
 
@@ -538,10 +546,27 @@ export default function EESujetWorkspace() {
               value={texts[step] || ''}
               onChange={(e) => updateText(e.target.value)}
               onBlur={handleTextareaBlur}
+              onPaste={(e) => {
+                e.preventDefault()
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+              }}
+              onKeyDown={(e) => {
+                // Block Ctrl/Cmd+V (paste) and Ctrl/Cmd+Shift+V
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+                  e.preventDefault()
+                }
+              }}
               rows={14}
               disabled={submittingAll}
               className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed focus:outline-none disabled:opacity-60"
-              placeholder="Écris ta réponse ici..."
+              placeholder="Écris ta réponse ici... (coller désactivé)"
+              autoComplete="off"
+              spellCheck={true}
             />
             <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
               <span className={wordCount < task.minWords || wordCount > task.maxWords ? 'font-semibold text-amber-500' : 'text-emerald-500'}>
