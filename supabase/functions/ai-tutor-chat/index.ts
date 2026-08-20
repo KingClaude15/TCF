@@ -1,12 +1,12 @@
 // Supabase Edge Function: ai-tutor-chat
 // Deploy: supabase functions deploy ai-tutor-chat
 //
-// Secrets (same as evaluate-essay / evaluate-eo):
+// Secrets:
 //   GROQ_API_KEY   (primary)
 //   GEMINI_API_KEY (optional fallback)
 //
-// Returns HTTP 200 with { reply } or { error } so the client always
-// receives a readable message (avoids the generic "non-2xx" SDK error).
+// Tries several current model IDs so a free-tier or renamed model
+// does not break the chat.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
@@ -24,8 +24,23 @@ Reste concis mais complet (150-350 mots max sauf si l'utilisateur demande plus d
 N'invente pas de faits. Si tu n'es pas sûr, dis-le clairement.`
 
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+
+// Tried in order — first that works wins
+const GROQ_MODELS = [
+  'llama-3.1-8b-instant',
+  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-20b',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'llama3-8b-8192',
+]
+
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+]
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -60,7 +75,7 @@ serve(async (req) => {
     if (!groqKey && !geminiKey) {
       return jsonResponse({
         error:
-          'Aucun fournisseur IA configuré. Dans le terminal : supabase secrets set GROQ_API_KEY=gsk_... puis redéploie la fonction.',
+          'Aucun fournisseur IA configuré. Définis GROQ_API_KEY (ou GEMINI_API_KEY) dans Supabase Secrets, puis redéploie.',
       })
     }
 
@@ -75,128 +90,132 @@ serve(async (req) => {
     let reply: string | null = null
     const errors: string[] = []
 
-    // ── 1. Groq (primary) ──────────────────────────────────────────────────
+    // ── 1. Groq — try several models ───────────────────────────────────────
     if (groqKey) {
-      try {
-        const messages = [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...safeHistory,
-          { role: 'user', content: message.trim() },
-        ]
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...safeHistory,
+        { role: 'user', content: message.trim() },
+      ]
 
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 45000)
+      for (const model of GROQ_MODELS) {
+        if (reply) break
+        try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 40000)
 
-        const res = await fetch(GROQ_CHAT_URL, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${groqKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: GROQ_MODEL,
-            temperature: 0.7,
-            max_tokens: 900,
-            messages,
-          }),
-          signal: controller.signal,
-        })
-        clearTimeout(timeout)
+          const res = await fetch(GROQ_CHAT_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${groqKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              temperature: 0.7,
+              max_tokens: 900,
+              messages,
+            }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
 
-        const text = await res.text()
-        if (res.ok) {
-          try {
-            const json = JSON.parse(text)
-            reply = json.choices?.[0]?.message?.content?.trim() || null
-            if (!reply) errors.push('Groq a répondu sans contenu.')
-          } catch {
-            errors.push('Réponse Groq illisible.')
+          const text = await res.text()
+          if (res.ok) {
+            try {
+              const json = JSON.parse(text)
+              reply = json.choices?.[0]?.message?.content?.trim() || null
+              if (reply) {
+                console.log('[ai-tutor-chat] Groq OK with model', model)
+              } else {
+                errors.push(`Groq ${model}: empty content`)
+              }
+            } catch {
+              errors.push(`Groq ${model}: invalid JSON`)
+            }
+          } else {
+            let detail = text.slice(0, 200)
+            try {
+              const j = JSON.parse(text)
+              detail = j?.error?.message || detail
+            } catch { /* keep */ }
+            errors.push(`Groq ${model}: ${res.status} ${detail}`)
+            // 404 model → try next; 401/403 key → stop Groq loop
+            if (res.status === 401 || res.status === 403) break
           }
-        } else {
-          // Surface useful Groq errors (invalid key, quota, model…)
-          let detail = text.slice(0, 300)
-          try {
-            const j = JSON.parse(text)
-            detail = j?.error?.message || j?.message || detail
-          } catch { /* keep raw */ }
-          errors.push(`Groq ${res.status}: ${detail}`)
-          console.error('[ai-tutor-chat] Groq error', res.status, detail)
+        } catch (err) {
+          const msg = (err as Error).name === 'AbortError' ? 'timeout' : ((err as Error).message || String(err))
+          errors.push(`Groq ${model}: ${msg}`)
         }
-      } catch (err) {
-        const msg = (err as Error).name === 'AbortError'
-          ? 'Groq timeout (45s)'
-          : ((err as Error).message || String(err))
-        errors.push(msg)
-        console.error('[ai-tutor-chat] Groq exception', msg)
       }
     }
 
     // ── 2. Gemini fallback ─────────────────────────────────────────────────
     if (!reply && geminiKey) {
-      try {
-        const contents = [
-          ...safeHistory.map((m: any) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }],
-          })),
-          { role: 'user', parts: [{ text: message.trim() }] },
-        ]
+      const contents = [
+        ...safeHistory.map((m: any) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        })),
+        { role: 'user', parts: [{ text: message.trim() }] },
+      ]
 
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 45000)
+      for (const model of GEMINI_MODELS) {
+        if (reply) break
+        try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 40000)
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`
 
-        const res = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 900,
-            },
-          }),
-          signal: controller.signal,
-        })
-        clearTimeout(timeout)
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+              contents,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 900,
+              },
+            }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
 
-        const text = await res.text()
-        if (res.ok) {
-          try {
-            const json = JSON.parse(text)
-            reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null
-            if (!reply) errors.push('Gemini a répondu sans contenu.')
-          } catch {
-            errors.push('Réponse Gemini illisible.')
+          const text = await res.text()
+          if (res.ok) {
+            try {
+              const json = JSON.parse(text)
+              reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null
+              if (reply) {
+                console.log('[ai-tutor-chat] Gemini OK with model', model)
+              } else {
+                errors.push(`Gemini ${model}: empty content`)
+              }
+            } catch {
+              errors.push(`Gemini ${model}: invalid JSON`)
+            }
+          } else {
+            let detail = text.slice(0, 200)
+            try {
+              const j = JSON.parse(text)
+              detail = j?.error?.message || detail
+            } catch { /* keep */ }
+            errors.push(`Gemini ${model}: ${res.status} ${detail}`)
+            if (res.status === 400 && /API key/i.test(detail)) break
           }
-        } else {
-          let detail = text.slice(0, 300)
-          try {
-            const j = JSON.parse(text)
-            detail = j?.error?.message || detail
-          } catch { /* keep raw */ }
-          errors.push(`Gemini ${res.status}: ${detail}`)
-          console.error('[ai-tutor-chat] Gemini error', res.status, detail)
+        } catch (err) {
+          const msg = (err as Error).name === 'AbortError' ? 'timeout' : ((err as Error).message || String(err))
+          errors.push(`Gemini ${model}: ${msg}`)
         }
-      } catch (err) {
-        const msg = (err as Error).name === 'AbortError'
-          ? 'Gemini timeout (45s)'
-          : ((err as Error).message || String(err))
-        errors.push(msg)
-        console.error('[ai-tutor-chat] Gemini exception', msg)
       }
     }
 
     if (!reply) {
-      // Always HTTP 200 so supabase.functions.invoke puts the body in `data`
-      // and the UI can show a precise message instead of "non-2xx".
-      const hint = errors.length
-        ? errors.join(' | ')
-        : 'Aucun fournisseur n’a répondu.'
       return jsonResponse({
         error:
-          'Le tuteur IA n’a pas pu répondre. Vérifie que GROQ_API_KEY (ou GEMINI_API_KEY) est bien défini dans Supabase Secrets, puis redéploie. Détail : ' +
-          hint.slice(0, 400),
+          'Le tuteur IA n’a pas pu répondre avec les modèles disponibles. Détail : ' +
+          errors.slice(0, 5).join(' | ').slice(0, 500),
       })
     }
 
