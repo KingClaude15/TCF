@@ -3,6 +3,7 @@ import { Send, Loader2, Bot, User, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 import { askAiTutor } from '../services/aiChatService'
 import PageHeader from '../components/ui/PageHeader'
+import ChatMarkdown from '../components/chat/ChatMarkdown'
 
 const WELCOME = {
   role: 'assistant',
@@ -99,13 +100,17 @@ export default function AiChat() {
               )}
               <div
                 className={clsx(
-                  'max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]',
+                  'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]',
                   msg.role === 'user'
-                    ? 'rounded-br-md bg-brand-600 text-white'
+                    ? 'whitespace-pre-wrap rounded-br-md bg-brand-600 text-white'
                     : 'rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
                 )}
               >
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  <ChatMarkdown content={msg.content} />
+                ) : (
+                  msg.content
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">

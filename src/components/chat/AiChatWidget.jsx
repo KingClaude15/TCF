@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Loader2, Bot, User } from 'lucide-react'
 import clsx from 'clsx'
 import { askAiTutor } from '../../services/aiChatService'
+import ChatMarkdown from './ChatMarkdown'
 import { useAuth } from '../../context/AuthContext'
 
 const WELCOME = {
@@ -119,11 +120,15 @@ export default function AiChatWidget() {
                 className={clsx(
                   'max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
                   msg.role === 'user'
-                    ? 'rounded-br-md bg-brand-600 text-white'
+                    ? 'whitespace-pre-wrap rounded-br-md bg-brand-600 text-white'
                     : 'rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
                 )}
               >
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  <ChatMarkdown content={msg.content} />
+                ) : (
+                  msg.content
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
