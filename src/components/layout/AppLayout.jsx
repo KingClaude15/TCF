@@ -4,6 +4,8 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import Footer from './Footer'
 import OnboardingTour from '../onboarding/OnboardingTour'
+import AiChatWidget from '../chat/AiChatWidget'
+import WhatsAppButton from '../chat/WhatsAppButton'
 import { useAuth } from '../../context/AuthContext'
 
 const TITLES = {
@@ -15,6 +17,7 @@ const TITLES = {
   '/ee/methodologie': 'Méthodologie EE',
   '/learning-center': "Centre d'apprentissage",
   '/progress-coach':  'Coach IA',
+  '/ai-chat':         'Chat IA',
   '/statistics':      'Statistics',
   '/recommendations': 'Recommendations',
   '/profile':         'Profile',
@@ -121,6 +124,8 @@ export default function AppLayout() {
           </div>
         )}
       </div>
+      <AiChatWidget />
+      <WhatsAppButton />
     </div>
   )
 }

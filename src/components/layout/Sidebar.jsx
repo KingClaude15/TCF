@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   GraduationCap,
   Brain,
+  MessageCircle,
   X,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -40,6 +41,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/learning-center', label: "Centre d'apprentissage", icon: GraduationCap },
       { to: '/progress-coach', label: 'Coach IA', icon: Brain },
+      { to: '/ai-chat', label: 'Chat IA', icon: MessageCircle },
       { to: '/statistics', label: 'Statistiques', icon: BarChart3 },
       { to: '/recommendations', label: 'Recommandations', icon: Sparkles },
     ],
