@@ -96,7 +96,9 @@ export default function EE() {
                     <Circle size={18} className="text-slate-300" />
                   )}
                 </div>
-                <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{sujet.tache1_prompt}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Clique pour ouvrir les 3 tâches (T1 · T2 · T3)
+                </p>
 
                 {band && (
                   <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
