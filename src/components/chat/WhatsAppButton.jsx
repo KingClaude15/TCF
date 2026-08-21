@@ -5,7 +5,7 @@ import { MessageCircle } from 'lucide-react'
  * Change ADMIN_WHATSAPP_NUMBER below to your real number (international format, no + or spaces).
  * Example: 237612345678 for Cameroon, 33612345678 for France, etc.
  */
-const ADMIN_WHATSAPP_NUMBER = '237XXXXXXXXX' // ← REPLACE WITH YOUR NUMBER
+const ADMIN_WHATSAPP_NUMBER = '237650795097' // ← REPLACE WITH YOUR NUMBER
 const PREFILL_MESSAGE = encodeURIComponent(
   'Bonjour ! Je suis un étudiant du TCF 41-Day Challenge et j’aimerais vous contacter.'
 )
