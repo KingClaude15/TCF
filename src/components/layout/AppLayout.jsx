@@ -18,6 +18,7 @@ const TITLES = {
   '/learning-center': "Centre d'apprentissage",
   '/progress-coach':  'Coach IA',
   '/ai-chat':         'Chat IA',
+  '/guide':          'Guide d\'utilisation',
   '/statistics':      'Statistics',
   '/recommendations': 'Recommendations',
   '/profile':         'Profile',

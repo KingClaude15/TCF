@@ -1,7 +1,7 @@
 import { toastError } from '../../lib/errorMessages'
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Loader2, Search, Headphones, BookOpen, PenLine, Mic, RefreshCcw, Eye } from 'lucide-react'
+import { Loader2, Search, Headphones, BookOpen, PenLine, Mic, RefreshCcw, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import clsx from 'clsx'
 import { listAllActivity } from '../../services/adminActivityService'
 import { supabase } from '../../lib/supabaseClient'
@@ -17,6 +17,81 @@ const MODULE_STYLES = {
 
 const PAGE_SIZE = 25
 
+/**
+ * Group EE/EO activity into one row per (user, sujet).
+ * CO/CE stay one row per series.
+ */
+function buildRows(activity) {
+  const rows = []
+  const sujetMap = new Map() // key -> grouped row
+
+  for (const a of activity) {
+    if (a.module !== 'EE' && a.module !== 'EO') {
+      rows.push({ kind: 'single', ...a })
+      continue
+    }
+
+    // label is "Sujet X — tâche Y"
+    const match = String(a.label || '').match(/Sujet\s+(\d+)/i)
+    const sujetNumber = match ? Number(match[1]) : null
+    const taskMatch = String(a.label || '').match(/t[aâ]che\s+(\d+)/i)
+    const taskNum = taskMatch ? Number(taskMatch[1]) : null
+
+    if (sujetNumber == null) {
+      rows.push({ kind: 'single', ...a })
+      continue
+    }
+
+    const key = `${a.module}:${a.userId}:${sujetNumber}`
+    let group = sujetMap.get(key)
+    if (!group) {
+      group = {
+        kind: 'sujet',
+        id: key,
+        module: a.module,
+        userId: a.userId,
+        user: a.user,
+        sujetNumber,
+        dayNumber: a.dayNumber,
+        date: a.date,
+        tasks: { 1: null, 2: null, 3: null },
+      }
+      sujetMap.set(key, group)
+      rows.push(group)
+    }
+
+    if (taskNum >= 1 && taskNum <= 3) {
+      group.tasks[taskNum] = a
+    }
+    // Keep latest date and day
+    if (new Date(a.date) > new Date(group.date)) group.date = a.date
+    if (a.dayNumber != null) group.dayNumber = a.dayNumber
+  }
+
+  // Sort: newest group/single first
+  rows.sort((a, b) => new Date(b.date) - new Date(a.date))
+  return rows
+}
+
+function taskScoreBadge(task) {
+  if (!task) {
+    return <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+  }
+  return (
+    <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+      {task.scoreLabel || `${task.score}/20`}
+    </span>
+  )
+}
+
+function averageScore(tasks) {
+  const scores = [1, 2, 3]
+    .map((n) => tasks[n]?.score)
+    .filter((s) => typeof s === 'number')
+  if (!scores.length) return null
+  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+}
+
 export default function AdminActivity() {
   const [activity, setActivity] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,19 +100,24 @@ export default function AdminActivity() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [moduleFilter, setModuleFilter] = useState('all')
   const [page, setPage] = useState(1)
-  const [viewing, setViewing] = useState(null)
+  const [viewing, setViewing] = useState(null) // single item or { kind:'sujet', tasks, ... }
   const [viewingAudioUrl, setViewingAudioUrl] = useState(null)
+  const [expandedTask, setExpandedTask] = useState(1)
 
   useEffect(() => {
-    if (viewing?.module === 'EO' && viewing.audioPath) {
+    const item =
+      viewing?.kind === 'sujet'
+        ? viewing.tasks?.[expandedTask]
+        : viewing
+    if (item?.module === 'EO' && item.audioPath) {
       supabase.storage
         .from('eo-recordings')
-        .createSignedUrl(viewing.audioPath, 60 * 15)
+        .createSignedUrl(item.audioPath, 60 * 15)
         .then(({ data }) => setViewingAudioUrl(data?.signedUrl || null))
     } else {
       setViewingAudioUrl(null)
     }
-  }, [viewing])
+  }, [viewing, expandedTask])
 
   async function load() {
     setLoading(true)
@@ -54,7 +134,6 @@ export default function AdminActivity() {
     load()
   }, [])
 
-  // Unique list of users who actually have activity, for the search suggestions.
   const knownUsers = useMemo(() => {
     const map = new Map()
     for (const a of activity) {
@@ -71,13 +150,16 @@ export default function AdminActivity() {
       .slice(0, 6)
   }, [knownUsers, query])
 
-  const filtered = useMemo(() => {
+  const filteredFlat = useMemo(() => {
     return activity.filter((a) => {
       if (moduleFilter !== 'all' && a.module !== moduleFilter) return false
       if (selectedUser && a.userId !== selectedUser.id) return false
       return true
     })
   }, [activity, moduleFilter, selectedUser])
+
+  const rows = useMemo(() => buildRows(filteredFlat), [filteredFlat])
+  const paged = rows.slice(0, page * PAGE_SIZE)
 
   function selectUser(u) {
     setSelectedUser(u)
@@ -92,7 +174,12 @@ export default function AdminActivity() {
     setPage(1)
   }
 
-  const paged = filtered.slice(0, page * PAGE_SIZE)
+  function openSujetView(group) {
+    setExpandedTask(
+      group.tasks[1] ? 1 : group.tasks[2] ? 2 : group.tasks[3] ? 3 : 1
+    )
+    setViewing(group)
+  }
 
   if (loading) {
     return (
@@ -156,7 +243,10 @@ export default function AdminActivity() {
             {['all', 'CO', 'CE', 'EE', 'EO'].map((m) => (
               <button
                 key={m}
-                onClick={() => setModuleFilter(m)}
+                onClick={() => {
+                  setModuleFilter(m)
+                  setPage(1)
+                }}
                 className={clsx(
                   'rounded-md px-3 py-1.5 transition-colors',
                   moduleFilter === m ? 'bg-white shadow-sm dark:bg-slate-700' : 'text-slate-500'
@@ -172,7 +262,11 @@ export default function AdminActivity() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      <p className="text-xs text-slate-400">
+        EE / EO : une ligne = un sujet (T1 · T2 · T3). CO / CE : une ligne = une série.
+      </p>
+
+      {rows.length === 0 ? (
         <EmptyState icon={Search} title="Aucune activité trouvée" description="Aucun exercice ne correspond à ces filtres." />
       ) : (
         <>
@@ -183,14 +277,59 @@ export default function AdminActivity() {
                   <th className="px-4 py-3 font-semibold">Utilisateur</th>
                   <th className="px-4 py-3 font-semibold">Module</th>
                   <th className="px-4 py-3 font-semibold">Exercice</th>
+                  <th className="px-4 py-3 font-semibold">T1</th>
+                  <th className="px-4 py-3 font-semibold">T2</th>
+                  <th className="px-4 py-3 font-semibold">T3</th>
+                  <th className="px-4 py-3 font-semibold">Moy.</th>
                   <th className="px-4 py-3 font-semibold">Jour</th>
-                  <th className="px-4 py-3 font-semibold">Score</th>
                   <th className="px-4 py-3 font-semibold">Date</th>
                   <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paged.map((a) => {
+                {paged.map((row) => {
+                  if (row.kind === 'sujet') {
+                    const { icon: Icon, className } = MODULE_STYLES[row.module]
+                    const avg = averageScore(row.tasks)
+                    return (
+                      <tr key={row.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{row.user?.full_name || '—'}</p>
+                          <p className="text-xs text-slate-400">{row.user?.email}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold', className)}>
+                            <Icon size={12} /> {row.module}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">
+                          Sujet {row.sujetNumber}
+                        </td>
+                        <td className="px-4 py-3">{taskScoreBadge(row.tasks[1])}</td>
+                        <td className="px-4 py-3">{taskScoreBadge(row.tasks[2])}</td>
+                        <td className="px-4 py-3">{taskScoreBadge(row.tasks[3])}</td>
+                        <td className="px-4 py-3 font-semibold tabular-nums">
+                          {avg != null ? `${avg}/20` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{row.dayNumber ?? '—'}</td>
+                        <td className="px-4 py-3 text-xs text-slate-400">
+                          {new Date(row.date).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => openSujetView(row)}
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950"
+                            title="Voir T1 · T2 · T3"
+                          >
+                            <Eye size={14} /> Voir
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  // Single row (CO / CE)
+                  const a = row
                   const { icon: Icon, className } = MODULE_STYLES[a.module]
                   return (
                     <tr key={a.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
@@ -203,32 +342,18 @@ export default function AdminActivity() {
                           <Icon size={12} /> {a.module}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{a.label}</td>
-                      <td className="px-4 py-3 text-slate-500">{a.dayNumber ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300" colSpan={1}>
+                        {a.label}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-300" colSpan={3}>
+                        —
+                      </td>
                       <td className="px-4 py-3 font-semibold">{a.scoreLabel}</td>
+                      <td className="px-4 py-3 text-slate-500">{a.dayNumber ?? '—'}</td>
                       <td className="px-4 py-3 text-xs text-slate-400">
                         {new Date(a.date).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {a.module === 'EE' && a.essay && (
-                          <button
-                            onClick={() => setViewing(a)}
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950"
-                            title="Voir la copie"
-                          >
-                            <Eye size={14} /> Voir
-                          </button>
-                        )}
-                        {a.module === 'EO' && a.audioPath && (
-                          <button
-                            onClick={() => setViewing(a)}
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950"
-                            title="Écouter l'enregistrement"
-                          >
-                            <Eye size={14} /> Voir
-                          </button>
-                        )}
-                      </td>
+                      <td className="px-4 py-3 text-right">—</td>
                     </tr>
                   )
                 })}
@@ -236,134 +361,207 @@ export default function AdminActivity() {
             </table>
           </div>
 
-          {paged.length < filtered.length && (
+          {paged.length < rows.length && (
             <button onClick={() => setPage((p) => p + 1)} className="btn-secondary mx-auto flex items-center gap-2">
-              Voir plus ({filtered.length - paged.length} restants)
+              Voir plus ({rows.length - paged.length} restants)
             </button>
           )}
         </>
       )}
 
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.module === 'EO' ? 'Copie EO' : 'Copie EE'} maxWidth="max-w-2xl">
-        {viewing && (
+      {/* Detail modal — sujet group or single */}
+      <Modal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={
+          viewing?.kind === 'sujet'
+            ? `${viewing.module} — Sujet ${viewing.sujetNumber}`
+            : viewing?.module === 'EO'
+              ? 'Copie EO'
+              : 'Copie EE'
+        }
+        maxWidth="max-w-2xl"
+      >
+        {viewing && viewing.kind === 'sujet' && (
           <div className="space-y-4 text-sm">
             <div>
               <p className="font-medium">{viewing.user?.full_name || '—'}</p>
               <p className="text-xs text-slate-400">{viewing.user?.email}</p>
             </div>
 
-            <div>
-              <p className="label mb-1">Sujet</p>
-              <p className="rounded-lg bg-slate-50 p-3 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                {viewing.prompt}
-              </p>
+            {/* Task tabs */}
+            <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+              {[1, 2, 3].map((n) => {
+                const t = viewing.tasks[n]
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={!t}
+                    onClick={() => setExpandedTask(n)}
+                    className={clsx(
+                      'flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors',
+                      expandedTask === n
+                        ? 'bg-white shadow-sm dark:bg-slate-700'
+                        : t
+                          ? 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                          : 'cursor-not-allowed text-slate-300 dark:text-slate-600'
+                    )}
+                  >
+                    T{n}
+                    {t ? (
+                      <span className="ml-1 tabular-nums text-slate-400">
+                        {typeof t.score === 'number' ? `${t.score}/20` : ''}
+                      </span>
+                    ) : (
+                      <span className="ml-1 text-slate-300">—</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
-            {viewing.module === 'EO' ? (
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="label mb-0">Enregistrement du candidat</p>
-                  {viewing.durationSeconds != null && (
-                    <span className="text-xs text-slate-400">{viewing.durationSeconds}s</span>
-                  )}
-                </div>
-                {viewingAudioUrl ? (
-                  <audio controls src={viewingAudioUrl} className="w-full" />
-                ) : (
-                  <p className="text-xs text-slate-400">Chargement de l'audio...</p>
-                )}
-              </div>
+            {viewing.tasks[expandedTask] ? (
+              <TaskDetail
+                item={viewing.tasks[expandedTask]}
+                audioUrl={viewingAudioUrl}
+              />
             ) : (
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="label mb-0">Réponse du candidat</p>
-                  {viewing.wordCount != null && (
-                    <span className="text-xs text-slate-400">{viewing.wordCount} mots</span>
-                  )}
-                </div>
-                <p className="whitespace-pre-wrap rounded-lg border border-slate-200 p-3 text-slate-700 dark:border-slate-700 dark:text-slate-200">
-                  {viewing.essay}
-                </p>
-              </div>
-            )}
-
-            {viewing.feedback && (
-              <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-                <p className="label mb-0">
-                  Score : {viewing.feedback.estimated_score}/20 ({viewing.feedback.cefr_level || '—'})
-                </p>
-                {viewing.module === 'EO' ? (
-                  <>
-                    {viewing.feedback.transcript && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Transcription</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.transcript}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.fluency_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Aisance et fluidité</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.fluency_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.pronunciation_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Prononciation</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.pronunciation_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.grammar_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.grammar_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.vocabulary_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.vocabulary_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.coherence_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Cohérence du discours</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.coherence_feedback}</p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {viewing.feedback.task_achievement_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Adéquation à la tâche</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.task_achievement_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.organization_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Organisation</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.organization_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.grammar_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.grammar_feedback}</p>
-                      </div>
-                    )}
-                    {viewing.feedback.vocabulary_feedback && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
-                        <p className="text-slate-600 dark:text-slate-300">{viewing.feedback.vocabulary_feedback}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              <p className="text-sm text-slate-400">Aucune copie pour cette tâche.</p>
             )}
           </div>
         )}
+
+        {viewing && viewing.kind !== 'sujet' && (
+          <TaskDetail item={viewing} audioUrl={viewingAudioUrl} />
+        )}
       </Modal>
+    </div>
+  )
+}
+
+function TaskDetail({ item, audioUrl }) {
+  if (!item) return null
+  return (
+    <div className="space-y-4 text-sm">
+      {item.kind !== 'sujet' && item.user && (
+        <div>
+          <p className="font-medium">{item.user?.full_name || '—'}</p>
+          <p className="text-xs text-slate-400">{item.user?.email}</p>
+        </div>
+      )}
+
+      <div>
+        <p className="label mb-1">Sujet / consigne</p>
+        <p className="rounded-lg bg-slate-50 p-3 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+          {item.prompt || '—'}
+        </p>
+      </div>
+
+      {item.module === 'EO' ? (
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <p className="label mb-0">Enregistrement du candidat</p>
+            {item.durationSeconds != null && (
+              <span className="text-xs text-slate-400">{item.durationSeconds}s</span>
+            )}
+          </div>
+          {audioUrl ? (
+            <audio controls src={audioUrl} className="w-full" />
+          ) : item.audioPath ? (
+            <p className="text-xs text-slate-400">Chargement de l'audio...</p>
+          ) : (
+            <p className="text-xs text-slate-400">Pas d'audio</p>
+          )}
+        </div>
+      ) : item.essay ? (
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <p className="label mb-0">Réponse du candidat</p>
+            {item.wordCount != null && (
+              <span className="text-xs text-slate-400">{item.wordCount} mots</span>
+            )}
+          </div>
+          <p className="whitespace-pre-wrap rounded-lg border border-slate-200 p-3 text-slate-700 dark:border-slate-700 dark:text-slate-200">
+            {item.essay}
+          </p>
+        </div>
+      ) : null}
+
+      {item.feedback && (
+        <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <p className="label mb-0">
+            Score : {item.feedback.estimated_score}/20 ({item.feedback.cefr_level || '—'})
+          </p>
+          {item.module === 'EO' ? (
+            <>
+              {item.feedback.transcript && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Transcription</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.transcript}</p>
+                </div>
+              )}
+              {item.feedback.fluency_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Aisance et fluidité</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.fluency_feedback}</p>
+                </div>
+              )}
+              {item.feedback.pronunciation_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Prononciation</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.pronunciation_feedback}</p>
+                </div>
+              )}
+              {item.feedback.grammar_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.grammar_feedback}</p>
+                </div>
+              )}
+              {item.feedback.vocabulary_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.vocabulary_feedback}</p>
+                </div>
+              )}
+              {item.feedback.coherence_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Cohérence du discours</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.coherence_feedback}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {item.feedback.task_achievement_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Adéquation à la tâche</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.task_achievement_feedback}</p>
+                </div>
+              )}
+              {item.feedback.organization_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Organisation</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.organization_feedback}</p>
+                </div>
+              )}
+              {item.feedback.grammar_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grammaire</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.grammar_feedback}</p>
+                </div>
+              )}
+              {item.feedback.vocabulary_feedback && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Vocabulaire</p>
+                  <p className="text-slate-600 dark:text-slate-300">{item.feedback.vocabulary_feedback}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

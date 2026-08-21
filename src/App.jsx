@@ -31,6 +31,7 @@ const EOSujetWorkspace = lazy(() => import('./pages/EOSujetWorkspace'))
 const LearningCenter   = lazy(() => import('./pages/LearningCenter'))
 const ProgressCoach    = lazy(() => import('./pages/ProgressCoach'))
 const AiChat           = lazy(() => import('./pages/AiChat'))
+const Guide            = lazy(() => import('./pages/Guide'))
 const Statistics       = lazy(() => import('./pages/Statistics'))
 const Recommendations  = lazy(() => import('./pages/Recommendations'))
 const Profile          = lazy(() => import('./pages/Profile'))
@@ -93,6 +94,7 @@ export default function App() {
               <Route path="/learning-center"  element={<LearningCenter />} />
               <Route path="/progress-coach"   element={<ProgressCoach />} />
               <Route path="/ai-chat"         element={<AiChat />} />
+              <Route path="/guide"          element={<Guide />} />
               <Route path="/statistics"       element={<Statistics />} />
               <Route path="/recommendations"  element={<Recommendations />} />
               <Route path="/profile"          element={<Profile />} />
