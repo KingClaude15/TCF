@@ -160,7 +160,16 @@ export default function ReadingRecommendations({ cefrBand, score }) {
 
   if (!cefrBand) return null
 
-  const { guides, resources } = getRecommendations(cefrBand)
+  let guides = []
+  let resources = []
+  try {
+    const rec = getRecommendations(cefrBand) || {}
+    guides = Array.isArray(rec.guides) ? rec.guides : []
+    resources = Array.isArray(rec.resources) ? rec.resources : []
+  } catch (err) {
+    console.warn('[ReadingRecommendations]', err)
+    return null
+  }
   if (!guides.length && !resources.length) return null
 
   const bandStyle = CEFR_BAND_STYLES[cefrBand] || ''

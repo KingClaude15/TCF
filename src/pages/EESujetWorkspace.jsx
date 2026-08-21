@@ -450,6 +450,15 @@ export default function EESujetWorkspace() {
   }
 
   // ---- Writing view ----
+  if (!task) {
+    return (
+      <div className="card p-8 text-center">
+        <p className="text-sm text-slate-500">Chargement du sujet…</p>
+        <Link to="/ee" className="btn-primary mt-4 inline-flex">Retour aux sujets</Link>
+      </div>
+    )
+  }
+
   const hasFailedTasks = Object.keys(taskErrors).length > 0
 
   return (

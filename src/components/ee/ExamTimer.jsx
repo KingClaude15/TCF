@@ -36,12 +36,14 @@ export default function ExamTimer({ storageKey, armed = true, onExpire, duration
     if (!armed) return
 
     const startTime = getStartTime()
+    let didExpire = false
 
     function tick() {
       const elapsed = Math.floor((Date.now() - startTime) / 1000)
       const remaining = Math.max(0, durationSeconds - elapsed)
       setSecondsLeft(remaining)
-      if (remaining === 0) {
+      if (remaining === 0 && !didExpire) {
+        didExpire = true
         setExpired(true)
         onExpire?.()
       }
