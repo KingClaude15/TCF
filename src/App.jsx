@@ -32,6 +32,7 @@ const LearningCenter   = lazy(() => import('./pages/LearningCenter'))
 const ProgressCoach    = lazy(() => import('./pages/ProgressCoach'))
 const AiChat           = lazy(() => import('./pages/AiChat'))
 const Guide            = lazy(() => import('./pages/Guide'))
+const Pricing          = lazy(() => import('./pages/Pricing'))
 const Statistics       = lazy(() => import('./pages/Statistics'))
 const Recommendations  = lazy(() => import('./pages/Recommendations'))
 const Profile          = lazy(() => import('./pages/Profile'))
@@ -42,6 +43,7 @@ const AdminSujets      = lazy(() => import('./pages/admin/AdminSujets'))
 const AdminEO          = lazy(() => import('./pages/admin/AdminEO'))
 const AdminCO          = lazy(() => import('./pages/admin/AdminCO'))
 const AdminCE          = lazy(() => import('./pages/admin/AdminCE'))
+const AdminPayments    = lazy(() => import('./pages/admin/AdminPayments'))
 const NotFound         = lazy(() => import('./pages/NotFound'))
 
 function PageLoader() {
@@ -95,6 +97,7 @@ export default function App() {
               <Route path="/progress-coach"   element={<ProgressCoach />} />
               <Route path="/ai-chat"         element={<AiChat />} />
               <Route path="/guide"          element={<Guide />} />
+              <Route path="/pricing"        element={<Pricing />} />
               <Route path="/statistics"       element={<Statistics />} />
               <Route path="/recommendations"  element={<Recommendations />} />
               <Route path="/profile"          element={<Profile />} />
@@ -109,6 +112,7 @@ export default function App() {
                   <Route path="eo"       element={<AdminEO />} />
                   <Route path="co"       element={<AdminCO />} />
                   <Route path="ce"       element={<AdminCE />} />
+                  <Route path="payments" element={<AdminPayments />} />
                 </Route>
               </Route>
             </Route>

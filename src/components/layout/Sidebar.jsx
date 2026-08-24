@@ -14,6 +14,7 @@ import {
   Brain,
   MessageCircle,
   HelpCircle,
+  CreditCard,
   X,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -26,6 +27,7 @@ const NAV_GROUPS = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/calendar', label: 'Calendrier du défi', icon: CalendarDays },
       { to: '/guide', label: 'Guide d\'utilisation', icon: HelpCircle },
+      { to: '/pricing', label: 'Tarifs / Premium', icon: CreditCard },
     ],
   },
   {

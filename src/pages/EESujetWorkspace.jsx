@@ -6,6 +6,7 @@ import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw, Clock, AlertTria
 import { useAuth } from '../context/AuthContext'
 import { getSujetByNumber, sujetToTasks, encodeTopicNumber } from '../services/sujetsService'
 import { saveDraft, getEeSubmission, submitForEvaluation, retakeSujet } from '../services/eeService'
+import { getEeAccessState } from '../services/subscriptionService'
 import { markDayModule, getActiveDay } from '../services/progressService'
 import { getActiveEvaluation } from '../services/evaluationLockService'
 import { subscribeToNotifications } from '../services/notificationsService'
@@ -19,7 +20,7 @@ const AUTOSAVE_INTERVAL_MS = 10000
 export default function EESujetWorkspace() {
   const { sujetNumber } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   const [sujet, setSujet] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -38,6 +39,7 @@ export default function EESujetWorkspace() {
   const [retaking, setRetaking] = useState(false)
   const [previousScores, setPreviousScores] = useState({})
   const [otherLock, setOtherLock] = useState(null) // a DIFFERENT sujet currently evaluating, blocks new submits
+  const [eeAccess, setEeAccess] = useState(null)
 
   const textareaRef = useRef(null)
   const dirtyRef = useRef(false)
@@ -120,6 +122,13 @@ export default function EESujetWorkspace() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (!user?.id) return
+    getEeAccessState(user.id, profile)
+      .then(setEeAccess)
+      .catch(() => setEeAccess(null))
+  }, [user?.id, profile])
 
   // While this sujet is pending, live-refresh the moment its own results
   // land (the notification bell also announces it, but this saves the
@@ -227,6 +236,18 @@ export default function EESujetWorkspace() {
         return
       }
 
+      // Paywall: free quota or active subscription
+      const access = await getEeAccessState(user.id, profile)
+      setEeAccess(access)
+      if (!access.allowed) {
+        if (!auto) {
+          toast.error(
+            `Tu as utilisé les ${access.limit} corrections EE gratuites. Passe au forfait semaine (2 500 FCFA) pour continuer.`
+          )
+        }
+        return
+      }
+
       submitLockRef.current = true
       setSubmittingAll(true)
       try {
@@ -301,7 +322,7 @@ export default function EESujetWorkspace() {
         setSubmittingAll(false)
       }
     },
-    [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user?.id]
+    [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user?.id, profile]
   )
 
   function handleExpire() {
@@ -369,8 +390,17 @@ export default function EESujetWorkspace() {
             <h2 className="font-heading text-lg font-bold">Correction en cours</h2>
             <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
               Ton sujet {sujet.sujet_number} a bien été soumis. L'IA évalue tes réponses — cela prend généralement moins de 5 minutes.
-              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts. Tu peux fermer
-              cette page ou continuer autre chose en attendant.
+            </p>
+            <div className="mt-3 max-w-md rounded-xl border border-brand-100 bg-brand-50 p-3 text-left text-xs leading-relaxed text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-100">
+              <p className="font-bold">Comment voir ta note ?</p>
+              <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+                <li>Ouvre la <strong>cloche de notification</strong> en haut à droite quand elle apparaît.</li>
+                <li>Ou retourne dans <strong>Expression Écrite</strong> et reclique sur <strong>Sujet {sujet.sujet_number}</strong>.</li>
+                <li>Tu verras le score /20, le niveau CECR et le détail de chaque tâche.</li>
+              </ol>
+            </div>
+            <p className="mt-2 max-w-md text-xs text-slate-400">
+              Tu peux fermer cette page ou continuer autre chose en attendant.
             </p>
           </div>
           <Link to="/ee" className="btn-primary">Retour aux sujets EE</Link>
@@ -450,15 +480,6 @@ export default function EESujetWorkspace() {
   }
 
   // ---- Writing view ----
-  if (!task) {
-    return (
-      <div className="card p-8 text-center">
-        <p className="text-sm text-slate-500">Chargement du sujet…</p>
-        <Link to="/ee" className="btn-primary mt-4 inline-flex">Retour aux sujets</Link>
-      </div>
-    )
-  }
-
   const hasFailedTasks = Object.keys(taskErrors).length > 0
 
   return (
@@ -585,7 +606,23 @@ export default function EESujetWorkspace() {
             </div>
           </div>
 
-          <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock} className="btn-primary w-full">
+          {eeAccess && !eeAccess.allowed && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+              <p className="font-semibold">Quota gratuit terminé ({eeAccess.used}/{eeAccess.limit} corrections EE)</p>
+              <p className="mt-1 text-xs">
+                Pour continuer les corrections IA : forfait <strong>2 500 FCFA / 7 jours</strong> (MTN MoMo ou Orange Money).
+              </p>
+              <Link to="/pricing" className="mt-2 inline-block font-semibold text-brand-600 underline">
+                Voir les tarifs et payer →
+              </Link>
+            </div>
+          )}
+          {eeAccess?.allowed && eeAccess.reason === 'free_quota' && (
+            <p className="text-center text-xs text-slate-400">
+              Corrections gratuites restantes : {eeAccess.remaining}/{eeAccess.limit}
+            </p>
+          )}
+          <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock || (eeAccess && !eeAccess.allowed)} className="btn-primary w-full">
             {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             {submittingAll ? 'Envoi en cours...' : otherLock ? 'Une autre correction est en cours' : 'Soumettre le sujet (3 tâches)'}
           </button>
