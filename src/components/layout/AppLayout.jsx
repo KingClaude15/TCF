@@ -19,7 +19,6 @@ const TITLES = {
   '/progress-coach':  'Coach IA',
   '/ai-chat':         'Chat IA',
   '/guide':          'Guide d\'utilisation',
-  '/pricing':        'Tarifs / Premium',
   '/statistics':      'Statistics',
   '/recommendations': 'Recommendations',
   '/profile':         'Profile',

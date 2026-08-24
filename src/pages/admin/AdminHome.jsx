@@ -7,7 +7,6 @@ import PageHeader from '../../components/ui/PageHeader'
 const TABS = [
   { to: '/admin/users', label: 'Utilisateurs' },
   { to: '/admin/activity', label: 'Activité' },
-  { to: '/admin/payments', label: 'Paiements' },
   { to: '/admin/sujets', label: 'Sujets EE' },
   { to: '/admin/eo', label: 'Sujets EO' },
   { to: '/admin/co', label: 'Séries CO' },
