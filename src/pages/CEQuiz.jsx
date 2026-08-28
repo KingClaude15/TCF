@@ -10,6 +10,7 @@ import { upsertCeResult } from '../services/ceService'
 import { markDayModule, getActiveDay } from '../services/progressService'
 import { computeWeightedPoints, coCeScoreToCecr, CO_CE_MAX_POINTS } from '../lib/tcfScoring'
 import { CEFR_BAND_STYLES } from '../lib/cecrBands'
+import { CE_SERIE_1_QUESTIONS } from '../data/ceSerie1Questions'
 
 /** Official-style numbering for CE items in a 39-question series */
 const DISPLAY_OFFSET = 40
@@ -28,7 +29,29 @@ export default function CEQuiz() {
   const [answers, setAnswers] = useState({})
   const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SEC)
 
-  const questions = series?.questions || []
+  const questions = useMemo(() => {
+    const raw = series?.questions || []
+    // Prefer rich local labels for série 1 when DB still has A/B/C/D placeholders
+    if (Number(seriesNumber) === 1 && CE_SERIE_1_QUESTIONS?.length) {
+      return raw.map((q, i) => {
+        const local = CE_SERIE_1_QUESTIONS[i]
+        if (!local) return q
+        const opts = q.options || []
+        const isPlaceholder =
+          opts.length === 4 &&
+          opts.every((o, idx) => !o || o === String.fromCharCode(65 + idx) || o === `Option ${String.fromCharCode(65 + idx)}`)
+        const textPlaceholder = !q.text || /^Question\s*\d+$/i.test(q.text)
+        return {
+          ...q,
+          text: textPlaceholder ? local.text : q.text,
+          options: isPlaceholder ? local.options : q.options,
+          correct_index: typeof q.correct_index === 'number' ? q.correct_index : local.correct_index,
+          image: q.image || local.image,
+        }
+      })
+    }
+    return raw
+  }, [series, seriesNumber])
 
   useEffect(() => {
     getCeSeries(seriesNumber)
@@ -241,14 +264,12 @@ export default function CEQuiz() {
           <div className="mb-8 flex flex-1 items-start justify-center pt-2 sm:pt-6">
             <div className="w-full max-w-2xl">
               {q?.image ? (
-                <div className="mx-auto overflow-hidden rounded-xl border-[3px] border-slate-200 bg-white px-6 py-10 shadow-sm dark:border-slate-600 dark:bg-white">
-                  <div className="mx-auto max-h-[220px] overflow-hidden">
-                    <img
-                      src={q.image}
-                      alt={`Document ${displayNum}`}
-                      className="mx-auto max-h-[220px] w-auto max-w-full object-contain object-top"
-                    />
-                  </div>
+                <div className="mx-auto overflow-hidden rounded-xl border-[3px] border-slate-200 bg-white px-8 py-8 shadow-sm dark:border-slate-600 dark:bg-white">
+                  <img
+                    src={q.image}
+                    alt={`Document ${displayNum}`}
+                    className="mx-auto max-h-[260px] w-auto max-w-full object-contain"
+                  />
                 </div>
               ) : (
                 <div className="mx-auto rounded-xl border-[3px] border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
