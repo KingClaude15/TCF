@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import Footer from './Footer'
 import OnboardingTour from '../onboarding/OnboardingTour'
+import IdleSessionGuard from './IdleSessionGuard'
 import AiChatWidget from '../chat/AiChatWidget'
 import WhatsAppButton from '../chat/WhatsAppButton'
 import { useAuth } from '../../context/AuthContext'
@@ -125,6 +126,7 @@ export default function AppLayout() {
           </div>
         )}
       </div>
+      <IdleSessionGuard />
       <AiChatWidget />
       <WhatsAppButton />
     </div>
