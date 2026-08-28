@@ -11,7 +11,7 @@ import { markDayModule, getActiveDay } from '../services/progressService'
 import { computeWeightedPoints, coCeScoreToCecr, CO_CE_MAX_POINTS } from '../lib/tcfScoring'
 import { CEFR_BAND_STYLES } from '../lib/cecrBands'
 
-/** Official TCF CE numbering often starts at 40 for the written paper block */
+/** Official-style numbering for CE items in a 39-question series */
 const DISPLAY_OFFSET = 40
 const EXAM_DURATION_SEC = 60 * 60
 
@@ -25,7 +25,7 @@ export default function CEQuiz() {
   const [result699, setResult699] = useState(null)
   const [startedAt] = useState(Date.now())
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState({}) // { [questionId]: optionIndex }
+  const [answers, setAnswers] = useState({})
   const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SEC)
 
   const questions = series?.questions || []
@@ -36,17 +36,10 @@ export default function CEQuiz() {
       .finally(() => setLoading(false))
   }, [seriesNumber])
 
-  // Countdown timer
   useEffect(() => {
     if (result699 || loading || !series) return
     const id = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(id)
-          return 0
-        }
-        return s - 1
-      })
+      setSecondsLeft((s) => (s <= 1 ? 0 : s - 1))
     }, 1000)
     return () => clearInterval(id)
   }, [result699, loading, series])
@@ -83,11 +76,8 @@ export default function CEQuiz() {
     }
   }, [answers, questions, user, series, seriesNumber, startedAt, submitting, result699])
 
-  // Auto-submit when time runs out
   useEffect(() => {
-    if (secondsLeft === 0 && series && !result699 && !submitting) {
-      finish()
-    }
+    if (secondsLeft === 0 && series && !result699 && !submitting) finish()
   }, [secondsLeft, series, result699, submitting, finish])
 
   function selectAnswer(optionIndex) {
@@ -105,36 +95,21 @@ export default function CEQuiz() {
   const ss = String(secondsLeft % 60).padStart(2, '0')
   const progressPct = Math.max(0, Math.min(100, (secondsLeft / EXAM_DURATION_SEC) * 100))
 
-  if (loading) {
-    return <div className="h-96 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
-  }
+  if (loading) return <div className="h-96 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
 
   if (!series) {
     return (
       <div className="card p-8 text-center">
         <p className="text-sm text-slate-500">Série introuvable.</p>
-        <Link to="/ce" className="btn-primary mt-4 inline-flex">
-          Retour
-        </Link>
+        <Link to="/ce" className="btn-primary mt-4 inline-flex">Retour</Link>
       </div>
     )
   }
 
   if (result699) {
     return (
-      <div className="mx-auto max-w-lg space-y-6 py-8">
-        <div
-          className={clsx(
-            'card p-8 text-center',
-            result699.cecrLevel === 'C2'
-              ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20'
-              : result699.cecrLevel === 'C1'
-                ? 'border-teal-200 bg-teal-50 dark:border-teal-900 dark:bg-teal-950/20'
-                : result699.cecrLevel === 'B2'
-                  ? 'border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/20'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800'
-          )}
-        >
+      <div className="mx-auto max-w-3xl space-y-6 py-6">
+        <div className="card p-8 text-center">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Résultat</p>
           <p className="mt-2 font-heading text-5xl font-bold tabular-nums text-ink-900 dark:text-white">
             {result699.points}
@@ -147,10 +122,78 @@ export default function CEQuiz() {
             Niveau {result699.cecrLevel}
           </span>
         </div>
-        <div className="flex justify-center gap-3">
-          <Link to="/ce" className="btn-primary">
-            Retour aux séries CE
-          </Link>
+
+        <div>
+          <h3 className="mb-3 font-heading text-base font-bold text-ink-900 dark:text-white">
+            Corrigé détaillé
+          </h3>
+          <div className="space-y-3">
+            {questions.map((qq, idx) => {
+              const n = DISPLAY_OFFSET + idx
+              const picked = answers[qq.id]
+              const correct = qq.correct_index
+              const isOk = picked === correct
+              const letter = (i) => String.fromCharCode(65 + i)
+              return (
+                <div
+                  key={qq.id}
+                  className={clsx(
+                    'rounded-xl border p-4',
+                    isOk
+                      ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/30'
+                      : 'border-red-200 bg-red-50/80 dark:border-red-900 dark:bg-red-950/30'
+                  )}
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-slate-800 px-2 py-0.5 text-xs font-bold text-white">
+                      {n}
+                    </span>
+                    <p className="flex-1 text-sm font-semibold text-ink-900 dark:text-white">{qq.text}</p>
+                    <span className={clsx('text-xs font-bold', isOk ? 'text-emerald-600' : 'text-red-600')}>
+                      {isOk ? 'Correct' : 'Incorrect'}
+                    </span>
+                  </div>
+                  {qq.image && (
+                    <img
+                      src={qq.image}
+                      alt=""
+                      className="mb-3 max-h-32 w-full rounded-lg object-cover object-top"
+                    />
+                  )}
+                  <ul className="space-y-1.5 text-sm">
+                    {qq.options.map((opt, oi) => {
+                      const isCorrectOpt = oi === correct
+                      const isPicked = oi === picked
+                      return (
+                        <li
+                          key={oi}
+                          className={clsx(
+                            'flex items-center gap-2 rounded-lg px-2 py-1.5',
+                            isCorrectOpt && 'bg-emerald-100 font-semibold dark:bg-emerald-900/40',
+                            isPicked && !isCorrectOpt && 'bg-red-100 dark:bg-red-900/40'
+                          )}
+                        >
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold dark:bg-slate-700">
+                            {letter(oi)}
+                          </span>
+                          <span className="flex-1">{opt}</span>
+                          {isCorrectOpt && <span className="text-[11px] font-bold text-emerald-700">Bonne réponse</span>}
+                          {isPicked && !isCorrectOpt && <span className="text-[11px] font-bold text-red-600">Ta réponse</span>}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {picked === undefined && (
+                    <p className="mt-2 text-xs text-amber-700">Tu n’as pas répondu à cette question.</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-center pb-8">
+          <Link to="/ce" className="btn-primary">Retour aux séries CE</Link>
         </div>
       </div>
     )
@@ -159,15 +202,14 @@ export default function CEQuiz() {
   const q = questions[current]
   const displayNum = DISPLAY_OFFSET + current
   const selected = q ? answers[q.id] : undefined
+  // Crop scans that include printed answers at the bottom (~top 55% = document only)
+  const cropDocument = q?.image_crop === 'document' || q?.image
 
   return (
-    <div className="-mx-4 -mt-2 flex min-h-[calc(100vh-4rem)] flex-col bg-slate-50 dark:bg-surface-dark sm:-mx-6">
-      {/* Top bar */}
+    <div className="-mx-4 -mt-2 flex min-h-[calc(100vh-4rem)] flex-col bg-slate-100 dark:bg-surface-dark sm:-mx-6">
       <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-slate-800 dark:bg-surface-darkCard">
         <div className="flex min-w-[140px] items-center gap-2">
-          <span className="font-mono text-sm font-bold tabular-nums text-ink-900 dark:text-white">
-            {mm}:{ss}
-          </span>
+          <span className="font-mono text-sm font-bold tabular-nums">{mm}:{ss}</span>
           <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 sm:w-40">
             <div
               className={clsx('h-full rounded-full transition-all', secondsLeft < 300 ? 'bg-red-500' : 'bg-emerald-500')}
@@ -182,87 +224,100 @@ export default function CEQuiz() {
           type="button"
           onClick={() => {
             if (answeredCount < questions.length) {
-              const ok = window.confirm(
-                `Tu n’as répondu qu’à ${answeredCount}/${questions.length} questions. Terminer quand même ?`
-              )
-              if (!ok) return
+              if (!window.confirm(`Tu n’as répondu qu’à ${answeredCount}/${questions.length} questions. Terminer quand même ?`)) return
             }
             finish()
           }}
           disabled={submitting}
           className="rounded-lg bg-red-500 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-60"
         >
-          {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Fin'}
+          {submitting ? <Loader2 size={16} className="inline animate-spin" /> : 'Fin'}
         </button>
       </header>
 
-      {/* Main + navigator */}
-      <div className="flex flex-1 flex-col gap-0 lg:flex-row">
-        {/* Center: document + question */}
+      <div className="flex flex-1 flex-col lg:flex-row">
         <main className="flex flex-1 flex-col overflow-auto p-4 sm:p-6">
-          {/* Document / image area */}
-          <div className="mb-4 flex min-h-[200px] flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/40">
-            {q?.image ? (
-              <img
-                src={q.image}
-                alt={`Document ${displayNum}`}
-                className="max-h-[min(52vh,520px)] w-full object-contain"
-              />
-            ) : (
-              <p className="max-w-xl whitespace-pre-line text-center text-base leading-relaxed text-slate-800 dark:text-slate-100">
-                {series.passage_text || q?.text || '—'}
-              </p>
-            )}
+          {/* Document only (cropped) — no baked-in answers */}
+          <div className="mb-5 flex justify-center">
+            <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/30">
+              {q?.image ? (
+                <div
+                  className="relative w-full overflow-hidden bg-white"
+                  style={{ maxHeight: cropDocument ? '280px' : '520px' }}
+                >
+                  <img
+                    src={q.image}
+                    alt={`Document ${displayNum}`}
+                    className="w-full object-cover object-top"
+                    style={{
+                      // Hide lower half of scan (printed MCQ with pre-marked answers)
+                      objectPosition: 'top center',
+                      maxHeight: cropDocument ? '280px' : undefined,
+                    }}
+                  />
+                </div>
+              ) : (
+                <p className="whitespace-pre-line p-8 text-center text-base leading-relaxed text-slate-800 dark:text-slate-100">
+                  {series.passage_text || '—'}
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Question panel */}
+          {/* Interactive answer panel — same style as exam reference */}
           {q && (
-            <div className="rounded-xl border-2 border-brand-500 bg-white shadow-sm dark:bg-surface-darkCard">
-              <div className="flex items-stretch overflow-hidden rounded-t-[10px] bg-brand-600 text-white">
-                <span className="flex w-14 shrink-0 items-center justify-center bg-white/15 text-lg font-bold">
+            <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border-2 border-sky-400 bg-white shadow-sm dark:bg-surface-darkCard">
+              <div className="flex items-stretch bg-sky-500 text-white">
+                <span className="flex w-14 shrink-0 items-center justify-center rounded-br-xl bg-white text-lg font-bold text-slate-800">
                   {displayNum}
                 </span>
-                <p className="flex-1 px-4 py-3 text-sm font-medium leading-snug sm:text-base">
-                  {q.text && !q.text.match(/^Question \d+$/) ? q.text : `Question ${displayNum}`}
+                <p className="flex-1 px-4 py-3.5 text-sm font-medium leading-snug sm:text-[15px]">
+                  {q.text}
                 </p>
               </div>
-              <div className="space-y-1 p-3 sm:p-4">
+              <ul className="divide-y divide-slate-100 px-2 py-1 dark:divide-slate-800">
                 {q.options.map((opt, optIdx) => {
                   const letter = String.fromCharCode(65 + optIdx)
                   const isSelected = selected === optIdx
-                  // Never show correct answer before finish — user chooses freely
                   return (
-                    <button
-                      key={optIdx}
-                      type="button"
-                      onClick={() => selectAnswer(optIdx)}
-                      className={clsx(
-                        'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
-                        isSelected
-                          ? 'bg-brand-50 font-semibold text-brand-800 ring-2 ring-brand-400 dark:bg-brand-950 dark:text-brand-200'
-                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
-                      )}
-                    >
-                      <span
+                    <li key={optIdx}>
+                      <button
+                        type="button"
+                        onClick={() => selectAnswer(optIdx)}
                         className={clsx(
-                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                          'flex w-full items-center gap-3 px-3 py-3 text-left text-sm transition-colors',
                           isSelected
-                            ? 'bg-brand-600 text-white'
-                            : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                            ? 'bg-sky-50 dark:bg-sky-950/40'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
                         )}
                       >
-                        {letter}
-                      </span>
-                      <span>{opt === letter || opt === String.fromCharCode(65 + optIdx) ? `Option ${letter}` : opt}</span>
-                    </button>
+                        <span
+                          className={clsx(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                            isSelected
+                              ? 'bg-sky-500 text-white'
+                              : 'bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-200'
+                          )}
+                        >
+                          {letter}
+                        </span>
+                        <span
+                          className={clsx(
+                            'text-slate-800 dark:text-slate-100',
+                            isSelected && 'font-semibold text-sky-800 dark:text-sky-200'
+                          )}
+                        >
+                          {opt}
+                        </span>
+                      </button>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             </div>
           )}
 
-          {/* Prev / Next */}
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mx-auto mt-4 flex w-full max-w-3xl justify-end gap-2">
             <button
               type="button"
               disabled={current === 0}
@@ -275,14 +330,13 @@ export default function CEQuiz() {
               type="button"
               disabled={current >= questions.length - 1}
               onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-              className="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-700"
+              className="rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
             >
               Suivant
             </button>
           </div>
         </main>
 
-        {/* Right navigator */}
         <aside className="border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-surface-darkCard lg:w-44 lg:border-l lg:border-t-0 lg:p-4">
           <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
             Questions · {answeredCount}/{questions.length}
@@ -299,9 +353,9 @@ export default function CEQuiz() {
                   onClick={() => setCurrent(idx)}
                   className={clsx(
                     'flex h-9 items-center justify-center rounded-md text-xs font-bold transition-colors',
-                    isCurrent && 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900',
+                    isCurrent && 'ring-2 ring-sky-500 ring-offset-1',
                     answered
-                      ? 'bg-emerald-300 text-emerald-900 dark:bg-emerald-600 dark:text-white'
+                      ? 'bg-emerald-400 text-emerald-950'
                       : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                   )}
                 >
@@ -311,7 +365,7 @@ export default function CEQuiz() {
             })}
           </div>
           <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
-            Vert clair = non répondu · Vert foncé = répondu. Tu peux changer une réponse à tout moment.
+            Clique une lettre pour répondre. Tu peux changer avant Fin.
           </p>
         </aside>
       </div>
