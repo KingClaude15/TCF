@@ -237,104 +237,104 @@ export default function CEQuiz() {
 
       <div className="flex flex-1 flex-col lg:flex-row">
         <main className="flex flex-1 flex-col overflow-auto p-4 sm:p-6">
-          {/* Document only (cropped) — no baked-in answers */}
-          <div className="mb-5 flex justify-center">
-            <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/30">
+          {/* Document — centered card like exam software */}
+          <div className="mb-8 flex flex-1 items-start justify-center pt-2 sm:pt-6">
+            <div className="w-full max-w-2xl">
               {q?.image ? (
-                <div
-                  className="relative w-full overflow-hidden bg-white"
-                  style={{ maxHeight: cropDocument ? '280px' : '520px' }}
-                >
-                  <img
-                    src={q.image}
-                    alt={`Document ${displayNum}`}
-                    className="w-full object-cover object-top"
-                    style={{
-                      // Hide lower half of scan (printed MCQ with pre-marked answers)
-                      objectPosition: 'top center',
-                      maxHeight: cropDocument ? '280px' : undefined,
-                    }}
-                  />
+                <div className="mx-auto overflow-hidden rounded-xl border-[3px] border-slate-200 bg-white px-6 py-10 shadow-sm dark:border-slate-600 dark:bg-white">
+                  <div className="mx-auto max-h-[220px] overflow-hidden">
+                    <img
+                      src={q.image}
+                      alt={`Document ${displayNum}`}
+                      className="mx-auto max-h-[220px] w-auto max-w-full object-contain object-top"
+                    />
+                  </div>
                 </div>
               ) : (
-                <p className="whitespace-pre-line p-8 text-center text-base leading-relaxed text-slate-800 dark:text-slate-100">
-                  {series.passage_text || '—'}
-                </p>
+                <div className="mx-auto rounded-xl border-[3px] border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+                  <p className="whitespace-pre-line font-serif text-lg leading-relaxed text-slate-900">
+                    {series.passage_text || '—'}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Interactive answer panel — same style as exam reference */}
+          {/* Answer panel — exact exam style */}
           {q && (
-            <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border-2 border-sky-400 bg-white shadow-sm dark:bg-surface-darkCard">
-              <div className="flex items-stretch bg-sky-500 text-white">
-                <span className="flex w-14 shrink-0 items-center justify-center rounded-br-xl bg-white text-lg font-bold text-slate-800">
-                  {displayNum}
-                </span>
-                <p className="flex-1 px-4 py-3.5 text-sm font-medium leading-snug sm:text-[15px]">
-                  {q.text}
-                </p>
-              </div>
-              <ul className="divide-y divide-slate-100 px-2 py-1 dark:divide-slate-800">
-                {q.options.map((opt, optIdx) => {
-                  const letter = String.fromCharCode(65 + optIdx)
-                  const isSelected = selected === optIdx
-                  return (
-                    <li key={optIdx}>
+            <div className="mx-auto w-full max-w-3xl">
+              <div className="overflow-hidden rounded-2xl border-2 border-[#3b9eff] bg-white shadow-sm">
+                {/* Blue question bar */}
+                <div className="flex items-stretch bg-[#3b9eff]">
+                  <div className="flex items-center pl-1.5 pr-0 py-1.5">
+                    <span className="flex h-10 min-w-[2.5rem] items-center justify-center rounded-lg bg-white px-2 text-base font-bold text-slate-800 shadow-sm">
+                      {displayNum}
+                    </span>
+                  </div>
+                  <p className="flex flex-1 items-center px-3 py-3 text-[15px] font-medium leading-snug text-white">
+                    {q.text}
+                  </p>
+                </div>
+
+                {/* Options A–D — selectable, nothing pre-checked */}
+                <div className="bg-white py-1">
+                  {q.options.map((opt, optIdx) => {
+                    const letter = String.fromCharCode(65 + optIdx)
+                    const isSelected = selected === optIdx
+                    return (
                       <button
+                        key={optIdx}
                         type="button"
                         onClick={() => selectAnswer(optIdx)}
                         className={clsx(
-                          'flex w-full items-center gap-3 px-3 py-3 text-left text-sm transition-colors',
-                          isSelected
-                            ? 'bg-sky-50 dark:bg-sky-950/40'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                          'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+                          isSelected ? 'bg-[#e8f4ff]' : 'hover:bg-slate-50'
                         )}
                       >
                         <span
                           className={clsx(
-                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold',
                             isSelected
-                              ? 'bg-sky-500 text-white'
-                              : 'bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-200'
+                              ? 'bg-[#3b9eff] text-white'
+                              : 'bg-[#9ca3af] text-white'
                           )}
                         >
                           {letter}
                         </span>
                         <span
                           className={clsx(
-                            'text-slate-800 dark:text-slate-100',
-                            isSelected && 'font-semibold text-sky-800 dark:text-sky-200'
+                            'text-[15px]',
+                            isSelected ? 'font-semibold text-slate-900' : 'font-normal text-slate-800'
                           )}
                         >
                           {opt}
                         </span>
                       </button>
-                    </li>
-                  )
-                })}
-              </ul>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={current === 0}
+                  onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+                  className="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                >
+                  Précédent
+                </button>
+                <button
+                  type="button"
+                  disabled={current >= questions.length - 1}
+                  onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
+                  className="rounded-full bg-[#3b9eff] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2b8eef] disabled:opacity-40"
+                >
+                  Suivant
+                </button>
+              </div>
             </div>
           )}
-
-          <div className="mx-auto mt-4 flex w-full max-w-3xl justify-end gap-2">
-            <button
-              type="button"
-              disabled={current === 0}
-              onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            >
-              Précédent
-            </button>
-            <button
-              type="button"
-              disabled={current >= questions.length - 1}
-              onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-              className="rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
         </main>
 
         <aside className="border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-surface-darkCard lg:w-44 lg:border-l lg:border-t-0 lg:p-4">
