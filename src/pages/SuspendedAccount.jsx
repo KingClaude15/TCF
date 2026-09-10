@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { ShieldAlert, LogOut, GraduationCap, MessageCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { toastError } from '../lib/errorMessages'
-import { getAdminWhatsAppUrl, hasAdminWhatsApp } from '../lib/appLinks'
+import { getAdminWhatsAppUrl, hasAdminWhatsApp, getAdminWhatsAppNumber } from '../lib/appLinks'
 
 export default function SuspendedAccount() {
   const { isAuthenticated, isSuspended, signOut, user } = useAuth()
@@ -13,6 +13,7 @@ export default function SuspendedAccount() {
   const waUrl = getAdminWhatsAppUrl(
     `Bonjour, mon compte TCF 41 Challenge (${user?.email || 'sans email'}) est suspendu. Je souhaite contacter un administrateur.`
   )
+  const waNumber = getAdminWhatsAppNumber()
 
   async function handleSignOut() {
     try {
@@ -52,8 +53,7 @@ export default function SuspendedAccount() {
             </a>
           ) : (
             <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
-              WhatsApp admin non configuré. Ajoute <code className="text-white/80">VITE_ADMIN_WHATSAPP</code> dans le
-              fichier <code className="text-white/80">.env</code> (ex. 2376XXXXXXXX).
+              Impossible d&apos;ouvrir WhatsApp. Vérifie le numéro admin.
             </p>
           )}
 
@@ -67,8 +67,7 @@ export default function SuspendedAccount() {
 
         {hasAdminWhatsApp() && (
           <p className="max-w-sm text-[11px] text-white/40">
-            Le message s&apos;ouvre dans WhatsApp avec ton email déjà prérempli. Réponse sous réserve de disponibilité de
-            l&apos;équipe.
+            WhatsApp : +{waNumber}. Un message prérempli avec ton email s&apos;ouvrira dans l&apos;application.
           </p>
         )}
       </div>
