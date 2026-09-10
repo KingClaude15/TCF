@@ -2,7 +2,7 @@ import { toastError } from '../lib/errorMessages'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw, Clock, AlertTriangle, Lock } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw, Clock, AlertTriangle, Lock, Download, BookOpen} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getSujetByNumber, sujetToTasks, encodeTopicNumber } from '../services/sujetsService'
 import { saveDraft, getEeSubmission, submitForEvaluation, retakeSujet } from '../services/eeService'
@@ -13,6 +13,7 @@ import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AccentPalette from '../components/ee/AccentPalette'
 import AiFeedbackPanel from '../components/ee/AiFeedbackPanel'
 import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
+import { EE_GUIDE_PDF_URL, EE_GUIDE_TITLE, EE_GUIDE_FILENAME } from '../lib/appLinks'
 
 const AUTOSAVE_INTERVAL_MS = 10000
 
@@ -369,17 +370,8 @@ export default function EESujetWorkspace() {
             <h2 className="font-heading text-lg font-bold">Correction en cours</h2>
             <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
               Ton sujet {sujet.sujet_number} a bien été soumis. L'IA évalue tes réponses — cela prend généralement moins de 5 minutes.
-            </p>
-            <div className="mt-3 max-w-md rounded-xl border border-brand-100 bg-brand-50 p-3 text-left text-xs leading-relaxed text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-100">
-              <p className="font-bold">Comment voir ta note ?</p>
-              <ol className="mt-1.5 list-decimal space-y-1 pl-4">
-                <li>Ouvre la <strong>cloche de notification</strong> en haut à droite quand elle apparaît.</li>
-                <li>Ou retourne dans <strong>Expression Écrite</strong> et reclique sur <strong>Sujet {sujet.sujet_number}</strong>.</li>
-                <li>Tu verras le score /20, le niveau CECR et le détail de chaque tâche.</li>
-              </ol>
-            </div>
-            <p className="mt-2 max-w-md text-xs text-slate-400">
-              Tu peux fermer cette page ou continuer autre chose en attendant.
+              Tu recevras une notification (en haut, à côté du bouton clair/sombre) dès que tes résultats seront prêts. Tu peux fermer
+              cette page ou continuer autre chose en attendant.
             </p>
           </div>
           <Link to="/ee" className="btn-primary">Retour aux sujets EE</Link>
@@ -446,6 +438,34 @@ export default function EESujetWorkspace() {
             )}
           </div>
         ))}
+
+        {/* Guide PDF — available after finishing a writing sujet */}
+        {phase === 'results' && (
+          <div className="card flex flex-col gap-4 border-ee-DEFAULT/20 bg-gradient-to-br from-pink-50 to-white p-5 dark:from-pink-950/30 dark:to-slate-900 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ee-DEFAULT/15 text-ee-DEFAULT">
+                <BookOpen size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-ink-900 dark:text-white">{EE_GUIDE_TITLE}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                  Guide complet (PDF) : comprendre les sujets, construire tes réponses, éviter les erreurs et viser C1/C2.
+                  Télécharge-le pour le relire après cette rédaction.
+                </p>
+              </div>
+            </div>
+            <a
+              href={EE_GUIDE_PDF_URL}
+              download={EE_GUIDE_FILENAME}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary inline-flex shrink-0 items-center justify-center gap-2"
+            >
+              <Download size={16} />
+              Télécharger le guide
+            </a>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <button onClick={() => navigate('/ee')} className="btn-primary">Retour aux sujets EE</button>
@@ -529,21 +549,13 @@ export default function EESujetWorkspace() {
         </div>
       )}
 
-      <div
-        className="select-none"
-        onCopy={(e) => e.preventDefault()}
-        onCut={(e) => e.preventDefault()}
-        onContextMenu={(e) => e.preventDefault()}
-      >
+      <div>
         <span className="text-xs font-bold uppercase text-ee-DEFAULT">
           Sujet {sujet.sujet_number} — {task.taskLabel}
         </span>
         <h2 className="mt-1 whitespace-pre-line text-base font-bold leading-snug">{task.prompt}</h2>
         <p className="mt-1 text-xs text-slate-400">
           Longueur attendue : {task.minWords}–{task.maxWords} mots
-        </p>
-        <p className="mt-1 text-[11px] text-slate-400 italic">
-          Copie du sujet désactivée — rédige ta réponse sans coller de texte externe.
         </p>
       </div>
 
@@ -555,27 +567,10 @@ export default function EESujetWorkspace() {
               value={texts[step] || ''}
               onChange={(e) => updateText(e.target.value)}
               onBlur={handleTextareaBlur}
-              onPaste={(e) => {
-                e.preventDefault()
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-              }}
-              onDragOver={(e) => {
-                e.preventDefault()
-              }}
-              onKeyDown={(e) => {
-                // Block Ctrl/Cmd+V (paste) and Ctrl/Cmd+Shift+V
-                if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
-                  e.preventDefault()
-                }
-              }}
               rows={14}
               disabled={submittingAll}
               className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed focus:outline-none disabled:opacity-60"
-              placeholder="Écris ta réponse ici... (coller désactivé)"
-              autoComplete="off"
-              spellCheck={true}
+              placeholder="Écris ta réponse ici..."
             />
             <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
               <span className={wordCount < task.minWords || wordCount > task.maxWords ? 'font-semibold text-amber-500' : 'text-emerald-500'}>

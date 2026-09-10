@@ -7,8 +7,9 @@ import StatCard from '../components/ui/StatCard'
 import EmptyState from '../components/ui/EmptyState'
 import PageHeader from '../components/ui/PageHeader'
 import { Link } from 'react-router-dom'
-import { PenLine, Target, CheckCircle2, Circle, Clock, BookOpen } from 'lucide-react'
+import { PenLine, Target, CheckCircle2, Circle, Clock, BookOpen, Download} from 'lucide-react'
 import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
+import { EE_GUIDE_PDF_URL, EE_GUIDE_TITLE, EE_GUIDE_FILENAME } from '../lib/appLinks'
 
 export default function EE() {
   const { user } = useAuth()
@@ -72,6 +73,28 @@ export default function EE() {
         </div>
       </Link>
 
+      <div className="card flex flex-col gap-3 border-ee-DEFAULT/15 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <BookOpen size={20} className="mt-0.5 shrink-0 text-ee-DEFAULT" />
+          <div>
+            <p className="text-sm font-bold text-ink-900 dark:text-white">{EE_GUIDE_TITLE}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Après chaque rédaction, télécharge ce guide PDF pour approfondir méthode et argumentation.
+            </p>
+          </div>
+        </div>
+        <a
+          href={EE_GUIDE_PDF_URL}
+          download={EE_GUIDE_FILENAME}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary inline-flex shrink-0 items-center gap-2 text-sm"
+        >
+          <Download size={15} />
+          Télécharger le guide
+        </a>
+      </div>
+
       {sujets.length === 0 ? (
         <EmptyState icon={PenLine} title="Aucun sujet disponible" description="Un administrateur doit d'abord ajouter des sujets EE." />
       ) : (
@@ -96,9 +119,7 @@ export default function EE() {
                     <Circle size={18} className="text-slate-300" />
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Clique pour ouvrir les 3 tâches (T1 · T2 · T3)
-                </p>
+                {/* Prompt hidden until the student opens the sujet */}
 
                 {band && (
                   <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
