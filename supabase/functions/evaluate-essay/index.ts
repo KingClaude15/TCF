@@ -87,24 +87,53 @@ CRITÈRES D'ÉVALUATION CECRL (à appliquer pour estimated_score /20) :
 4. Correction grammaticale (conjugaison, accords, syntaxe)
 5. Registre de langue adapté au destinataire/contexte
 
-Retourne UNIQUEMENT un objet JSON valide (aucun texte avant/après, aucun markdown) avec exactement cette forme :
+FORMAT OBLIGATOIRE DES COMMENTAIRES (très important pour l'affichage) :
+Chaque champ de feedback textuel (grammar_feedback, vocabulary_feedback, organization_feedback, task_achievement_feedback, recommendations) DOIT être structuré en points, avec des retours à la ligne, et NON en un seul paragraphe dense.
+
+Utilise exactement ce format pour grammar_feedback, vocabulary_feedback, organization_feedback et task_achievement_feedback :
+
+Points forts :
+- ...
+- ...
+
+Points à corriger :
+- Erreur précise citée entre guillemets → forme correcte. Explication courte de la règle.
+- ...
+
+Synthèse :
+- 1 ou 2 phrases max sur le niveau global de ce critère.
+
+Règles pour les erreurs :
+- Cite TOUJOURS le passage fautif du candidat entre guillemets.
+- Donne TOUJOURS la correction attendue.
+- Explique la règle en une phrase simple (accessible à un candidat B1).
+- Si le critère est globalement bon, écris quand même "Points à corriger :" avec "- Aucune erreur majeure sur ce critère." puis des pistes d'enrichissement optionnelles.
+
+Pour "mistakes" : liste TOUTES les erreurs repérées (minimum 3 si le score < 14, minimum 5 si le score < 10, jusqu'à 12 si nécessaire). Ne fusionne pas plusieurs erreurs dans un seul item. Chaque item = 1 erreur concrète.
+
+Pour "recommendations" : liste numérotée de 4 à 7 actions concrètes, chacune sur une ligne, format :
+1. ...
+2. ...
+Chaque recommandation doit dire QUOI faire + POURQUOI + un mini-exemple si utile. Interdit : conseils vagues du type "travaille la grammaire".
+
+Retourne UNIQUEMENT un objet JSON valide (aucun texte avant/après, aucun markdown code fence) avec exactement cette forme :
 
 {
   "cefr_level": "B2",
   "estimated_score": 14.5,
-  "grammar_feedback": "string détaillé en français",
-  "vocabulary_feedback": "string détaillé en français",
-  "organization_feedback": "string détaillé en français, doit explicitement commenter le respect de la structure attendue pour cette tâche précise",
-  "task_achievement_feedback": "string détaillé en français, doit explicitement mentionner le nombre de mots réel vs attendu et tout écart au format",
+  "grammar_feedback": "Points forts :\n- ...\n\nPoints à corriger :\n- \"forme fautive\" → correction. Règle...\n\nSynthèse :\n- ...",
+  "vocabulary_feedback": "Points forts :\n- ...\n\nPoints à corriger :\n- ...\n\nSynthèse :\n- ...",
+  "organization_feedback": "Points forts :\n- ...\n\nPoints à corriger :\n- ...\n\nSynthèse :\n- ... (commente explicitement la structure attendue pour cette tâche)",
+  "task_achievement_feedback": "Points forts :\n- ...\n\nPoints à corriger :\n- ...\n\nSynthèse :\n- Nombre de mots : X (attendu Y–Z). ...",
   "mistakes": [
-    { "original": "string", "correction": "string", "explanation": "string", "category": "grammaire|conjugaison|orthographe|syntaxe|lexique|structure|registre" }
+    { "original": "passage exact du candidat", "correction": "forme correcte", "explanation": "règle claire en français", "category": "grammaire|conjugaison|orthographe|syntaxe|lexique|structure|registre" }
   ],
   "corrected_version": "le texte entièrement corrigé, en conservant autant que possible les idées originales du candidat",
   "model_answer": "une réponse modèle de niveau C2 pour le même sujet, respectant scrupuleusement la structure et le nombre de mots attendus pour cette tâche",
   "vocabulary_suggestions": [
-    { "basic": "string", "advanced": "string", "context": "string" }
+    { "basic": "mot/expression basique utilisée ou attendue", "advanced": "alternative plus précise / B2-C1", "context": "exemple en contexte" }
   ],
-  "recommendations": "conseils personnalisés, concrets et actionnables en français pour progresser vers le niveau supérieur"
+  "recommendations": "1. ...\n2. ...\n3. ...\n4. ..."
 }
 
 estimated_score est sur 20, aligné sur le barème officiel TCF Canada EE. Sois précis, technique, et exigeant — pas complaisant.`
