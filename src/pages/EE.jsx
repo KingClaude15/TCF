@@ -172,9 +172,12 @@ export default function EE() {
                       const sub = byTopicNumber.get(encodeTopicNumber(sujet.sujet_number, t))
                       const status = sub?.status
                       const score = sub?.ai_feedback?.[0]?.estimated_score
-                      const isEval = status === 'evaluated'
-                      const isPending = status === 'evaluating'
+                      const hasScore = typeof score === 'number'
+                      // Treat as corrected if status says so OR feedback row already exists
+                      const isEval = status === 'evaluated' || hasScore
+                      const isPending = status === 'evaluating' && !hasScore
                       const hasDraft = !!sub && !isEval && !isPending
+                      const canRetake = !!sub // any existing attempt can be wiped & redone
                       const topicNumber = encodeTopicNumber(sujet.sujet_number, t)
 
                       return (
@@ -204,8 +207,10 @@ export default function EE() {
                               {TASK_LABELS[t]}
                             </span>
                             <span className="ml-auto shrink-0 text-[11px] font-semibold text-slate-400">
-                              {isEval && typeof score === 'number'
+                              {isEval && hasScore
                                 ? `${score}/20`
+                                : isEval
+                                ? 'Corrigée'
                                 : isPending
                                 ? 'Correction…'
                                 : hasDraft
@@ -213,7 +218,7 @@ export default function EE() {
                                 : 'À faire'}
                             </span>
                           </button>
-                          {isEval && (
+                          {canRetake && (
                             <button
                               type="button"
                               title="Refaire cette tâche uniquement"

@@ -709,37 +709,103 @@ export default function EESujetWorkspace() {
 
           {mode === 'single' ? (
             <>
-              <button
-                type="button"
-                onClick={handleSubmitOne}
-                disabled={
-                  submittingOne ||
-                  submittingAll ||
-                  !!otherLock ||
-                  !!feedbacks[step] ||
-                  taskStatuses[step] === 'evaluating'
-                }
-                className="btn-primary w-full"
-              >
-                {submittingOne || taskStatuses[step] === 'evaluating' ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Sparkles size={16} />
-                )}
-                {feedbacks[step]
-                  ? 'Tâche déjà corrigée'
-                  : taskStatuses[step] === 'evaluating'
-                  ? 'Correction en cours…'
-                  : submittingOne
-                  ? 'Envoi en cours…'
-                  : otherLock
-                  ? 'Une autre correction est en cours'
-                  : `Soumettre ${task?.taskLabel || 'cette tâche'}`}
-              </button>
-              <p className="text-center text-xs text-slate-400">
-                Seule cette tâche est envoyée à l&apos;IA. Les autres ne sont pas touchées. Tu peux les faire plus tard
-                dans la section entraînement.
-              </p>
+              {feedbacks[step] ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Cette tâche a déjà été corrigée
+                    {typeof feedbacks[step]?.estimated_score === 'number'
+                      ? ` — ${feedbacks[step].estimated_score}/20`
+                      : ''}
+                    . Consulte le détail ci-dessous ou refais-la.
+                  </div>
+                  <AiFeedbackPanel
+                    feedback={feedbacks[step]}
+                    submittedText={submittedTexts[step] || texts[step]}
+                  />
+                  <button
+                    type="button"
+                    disabled={retaking}
+                    onClick={async () => {
+                      if (retaking || !task) return
+                      if (
+                        !window.confirm(
+                          `Refaire uniquement ${task.taskLabel} ? Ta copie actuelle et sa correction seront effacées. Les autres tâches restent intactes.`
+                        )
+                      ) {
+                        return
+                      }
+                      setRetaking(true)
+                      try {
+                        await retakeTask(user.id, encodeTopicNumber(sujetNumber, task.taskType))
+                        toast.success(`${task.taskLabel} réinitialisée — tu peux réécrire.`)
+                        // Clear local state for this step only
+                        setTexts((prev) => ({ ...prev, [step]: '' }))
+                        setSubmittedTexts((prev) => {
+                          const n = { ...prev }
+                          delete n[step]
+                          return n
+                        })
+                        setFeedbacks((prev) => {
+                          const n = { ...prev }
+                          delete n[step]
+                          return n
+                        })
+                        setTaskStatuses((prev) => {
+                          const n = { ...prev }
+                          delete n[step]
+                          return n
+                        })
+                        setSubmissionIds((prev) => {
+                          const n = { ...prev }
+                          delete n[step]
+                          return n
+                        })
+                        setPhase('writing')
+                        navigate(`/ee/${sujetNumber}?mode=single&task=${task.taskType}`, { replace: true })
+                      } catch (err) {
+                        toastError(err, 'Impossible de réinitialiser cette tâche')
+                      } finally {
+                        setRetaking(false)
+                      }
+                    }}
+                    className="btn-primary w-full"
+                  >
+                    {retaking ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+                    Refaire cette tâche
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSubmitOne}
+                    disabled={
+                      submittingOne ||
+                      submittingAll ||
+                      !!otherLock ||
+                      taskStatuses[step] === 'evaluating'
+                    }
+                    className="btn-primary w-full"
+                  >
+                    {submittingOne || taskStatuses[step] === 'evaluating' ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {taskStatuses[step] === 'evaluating'
+                      ? 'Correction en cours…'
+                      : submittingOne
+                      ? 'Envoi en cours…'
+                      : otherLock
+                      ? 'Une autre correction est en cours'
+                      : `Soumettre ${task?.taskLabel || 'cette tâche'}`}
+                  </button>
+                  <p className="text-center text-xs text-slate-400">
+                    Seule cette tâche est envoyée à l&apos;IA. Les autres ne sont pas touchées. Tu peux les faire plus
+                    tard dans la section entraînement.
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <>
