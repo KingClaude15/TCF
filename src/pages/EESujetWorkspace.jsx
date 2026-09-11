@@ -48,6 +48,15 @@ export default function EESujetWorkspace() {
   const [retaking, setRetaking] = useState(false)
   const [previousScores, setPreviousScores] = useState({})
   const [otherLock, setOtherLock] = useState(null) // a DIFFERENT sujet currently evaluating, blocks new submits
+  const [mode, setMode] = useState(initialMode) // 'single' | 'exam'
+  const [submittingOne, setSubmittingOne] = useState(false)
+
+  useEffect(() => {
+    setMode(initialMode)
+    try {
+      localStorage.setItem('tcf_ee_practice_mode', initialMode)
+    } catch { /* ignore */ }
+  }, [initialMode])
 
   const textareaRef = useRef(null)
   const dirtyRef = useRef(false)
@@ -99,11 +108,18 @@ export default function EESujetWorkspace() {
       setTaskErrors(nextErrors)
 
       const anyEvaluating = taskList.some((_, i) => nextStatuses[i] === 'evaluating')
-      if (taskList.length > 0 && taskList.every((_, i) => nextFeedback[i])) {
+      const allDone = taskList.length > 0 && taskList.every((_, i) => nextFeedback[i])
+      let practiceMode = 'single'
+      try {
+        practiceMode = localStorage.getItem('tcf_ee_practice_mode') === 'exam' ? 'exam' : 'single'
+      } catch { /* ignore */ }
+      if (allDone) {
         setPhase('results')
-      } else if (anyEvaluating) {
+      } else if (anyEvaluating && practiceMode === 'exam') {
+        // Full exam batch: waiting screen
         setPhase('pending')
       } else {
+        // Single-task practice: stay on writing while one task is evaluating
         setPhase('writing')
       }
 
@@ -134,13 +150,26 @@ export default function EESujetWorkspace() {
   // While this sujet is pending, live-refresh the moment its own results
   // land (the notification bell also announces it, but this saves the
   // student from having to navigate away and back if they're still here).
+  const anyTaskEvaluating = Object.values(taskStatuses).some((s) => s === 'evaluating')
+
   useEffect(() => {
-    if (phase !== 'pending' || !user) return
+    if (!user) return
+    const shouldWatch = phase === 'pending' || (phase === 'writing' && anyTaskEvaluating)
+    if (!shouldWatch) return
+
     const unsubscribe = subscribeToNotifications(user.id, (notif) => {
       if (notif.link === `/ee/${sujetNumber}`) load()
     })
-    return unsubscribe
-  }, [phase, user?.id, sujetNumber, load])
+    // Fallback poll in case realtime is slow
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') load()
+    }, 15000)
+
+    return () => {
+      unsubscribe()
+      clearInterval(id)
+    }
+  }, [phase, user?.id, sujetNumber, load, anyTaskEvaluating])
 
   const task = tasks[step]
   const wordCount = texts[step]?.trim() ? texts[step].trim().split(/\s+/).length : 0
@@ -313,6 +342,72 @@ export default function EESujetWorkspace() {
     },
     [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user?.id]
   )
+
+  async function handleSubmitOne() {
+    if (submitLockRef.current || submittingOne) return
+    const t = tasks[step]
+    const content = texts[step]
+    if (!t) return
+    if (!content?.trim()) {
+      toast.error("Écris d'abord ta réponse pour cette tâche.")
+      return
+    }
+    if (feedbacks[step]) {
+      toast('Cette tâche est déjà corrigée.', { icon: '✓' })
+      return
+    }
+    if (taskStatuses[step] === 'evaluating') {
+      toast('Cette tâche est déjà en cours de correction.', { icon: '⏳' })
+      return
+    }
+
+    const lock = await getActiveEvaluation(user.id, 'EE', Number(sujetNumber))
+    if (lock) {
+      setOtherLock(lock)
+      toast.error(`Une correction ${lock.kind} est déjà en cours (sujet ${lock.sujetNumber}). Attends qu'elle se termine.`)
+      return
+    }
+
+    submitLockRef.current = true
+    setSubmittingOne(true)
+    try {
+      const dayNumber = await getActiveDay(user.id)
+      const saved = await saveDraft(user.id, {
+        topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
+        prompt: t.prompt,
+        draftContent: content,
+        dayNumber,
+      })
+      await submitForEvaluation({
+        submissionId: saved.id,
+        prompt: t.prompt,
+        essay: content,
+        topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
+        taskType: t.taskType,
+        minWords: t.minWords,
+        maxWords: t.maxWords,
+      })
+      setTaskStatuses((s) => ({ ...s, [step]: 'evaluating' }))
+      setTaskErrors((e) => {
+        const n = { ...e }
+        delete n[step]
+        return n
+      })
+      setSubmissionIds((ids) => ({ ...ids, [step]: saved.id }))
+      toast.success(`${t.taskLabel} envoyée — correction en cours. Tu peux enchaîner une autre tâche.`)
+      try {
+        await markDayModule(user.id, dayNumber, 'ee')
+      } catch {
+        // non-blocking
+      }
+    } catch (err) {
+      toastError(err, `Échec de soumission — ${t.taskLabel}`)
+      setTaskErrors((e) => ({ ...e, [step]: err.message }))
+    } finally {
+      submitLockRef.current = false
+      setSubmittingOne(false)
+    }
+  }
 
   function handleExpire() {
     setExpired(true)
@@ -522,7 +617,7 @@ export default function EESujetWorkspace() {
         >
           <ArrowLeft size={16} /> Retour aux sujets
         </button>
-        {timerKey && <ExamTimer storageKey={timerKey} armed={hasStarted} onExpire={handleExpire} />}
+        {mode === 'exam' && timerKey && <ExamTimer storageKey={timerKey} armed={hasStarted} onExpire={handleExpire} />}
       </div>
 
       {otherLock && (
@@ -600,7 +695,7 @@ export default function EESujetWorkspace() {
               onChange={(e) => updateText(e.target.value)}
               onBlur={handleTextareaBlur}
               rows={14}
-              disabled={submittingAll}
+              disabled={submittingAll || submittingOne || taskStatuses[step] === 'evaluating' || !!feedbacks[step]}
               className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed focus:outline-none disabled:opacity-60"
               placeholder="Écris ta réponse ici..."
             />
@@ -612,13 +707,61 @@ export default function EESujetWorkspace() {
             </div>
           </div>
 
-          <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock} className="btn-primary w-full">
-            {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            {submittingAll ? 'Envoi en cours...' : otherLock ? 'Une autre correction est en cours' : 'Soumettre le sujet (3 tâches)'}
-          </button>
-          <p className="text-center text-xs text-slate-400">
-            La soumission envoie les trois tâches à l'IA puis clôture ce sujet. Les résultats arrivent par notification.
-          </p>
+          {mode === 'single' ? (
+            <>
+              <button
+                type="button"
+                onClick={handleSubmitOne}
+                disabled={
+                  submittingOne ||
+                  submittingAll ||
+                  !!otherLock ||
+                  !!feedbacks[step] ||
+                  taskStatuses[step] === 'evaluating'
+                }
+                className="btn-primary w-full"
+              >
+                {submittingOne || taskStatuses[step] === 'evaluating' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                {feedbacks[step]
+                  ? 'Tâche déjà corrigée'
+                  : taskStatuses[step] === 'evaluating'
+                  ? 'Correction en cours…'
+                  : submittingOne
+                  ? 'Envoi en cours…'
+                  : otherLock
+                  ? 'Une autre correction est en cours'
+                  : `Soumettre ${task?.taskLabel || 'cette tâche'}`}
+              </button>
+              <p className="text-center text-xs text-slate-400">
+                Seule cette tâche est envoyée à l&apos;IA. Les autres ne sont pas touchées. Tu peux les faire plus tard
+                dans la section entraînement.
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmitAll(false)}
+                disabled={submittingAll || !!otherLock}
+                className="btn-primary w-full"
+              >
+                {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                {submittingAll
+                  ? 'Envoi en cours...'
+                  : otherLock
+                  ? 'Une autre correction est en cours'
+                  : 'Soumettre le sujet (3 tâches)'}
+              </button>
+              <p className="text-center text-xs text-slate-400">
+                La soumission envoie les trois tâches à l&apos;IA puis clôture ce sujet. Les résultats arrivent par
+                notification.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
