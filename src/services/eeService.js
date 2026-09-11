@@ -136,3 +136,16 @@ export async function retakeSujet(userId, topicNumbers) {
     .in('topic_number', topicNumbers)
   if (error) throw error
 }
+
+/**
+ * Wipe a single task submission so the student can redo only that task.
+ * Does not touch the other two tasks of the same sujet.
+ */
+export async function retakeTask(userId, topicNumber) {
+  const { error } = await supabase
+    .from('ee_submissions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('topic_number', topicNumber)
+  if (error) throw error
+}

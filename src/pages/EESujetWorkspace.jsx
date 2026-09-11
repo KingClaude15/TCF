@@ -1,11 +1,11 @@
 import { toastError } from '../lib/errorMessages'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Sparkles, Loader2, CheckCircle2, RotateCcw, Clock, AlertTriangle, Lock, Download, BookOpen} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getSujetByNumber, sujetToTasks, encodeTopicNumber } from '../services/sujetsService'
-import { saveDraft, getEeSubmission, submitForEvaluation, retakeSujet } from '../services/eeService'
+import { saveDraft, getEeSubmission, submitForEvaluation, retakeSujet, retakeTask } from '../services/eeService'
 import { markDayModule, getActiveDay } from '../services/progressService'
 import { getActiveEvaluation } from '../services/evaluationLockService'
 import { subscribeToNotifications } from '../services/notificationsService'
@@ -19,13 +19,22 @@ const AUTOSAVE_INTERVAL_MS = 10000
 
 export default function EESujetWorkspace() {
   const { sujetNumber } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const initialMode = searchParams.get('mode') === 'exam' ? 'exam' : 'single'
+  const initialTask = Math.min(3, Math.max(1, Number(searchParams.get('task') || 1))) || 1
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tcf_ee_practice_mode', initialMode)
+    } catch { /* ignore */ }
+  }, [initialMode])
 
   const [sujet, setSujet] = useState(null)
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(() => Math.max(0, (initialTask || 1) - 1))
   const [texts, setTexts] = useState({})
   const [submittedTexts, setSubmittedTexts] = useState({})
   const [submissionIds, setSubmissionIds] = useState({})
@@ -39,27 +48,10 @@ export default function EESujetWorkspace() {
   const [retaking, setRetaking] = useState(false)
   const [previousScores, setPreviousScores] = useState({})
   const [otherLock, setOtherLock] = useState(null) // a DIFFERENT sujet currently evaluating, blocks new submits
-  // 'single' = practice one task at a time; 'exam' = full 3-task session (60 min)
-  const [mode, setMode] = useState(() => {
-    try {
-      return localStorage.getItem('tcf_ee_practice_mode') === 'exam' ? 'exam' : 'single'
-    } catch {
-      return 'single'
-    }
-  })
-  const [submittingOne, setSubmittingOne] = useState(false)
 
   const textareaRef = useRef(null)
   const dirtyRef = useRef(false)
   const submitLockRef = useRef(false)
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tcf_ee_practice_mode', mode)
-    } catch {
-      // ignore
-    }
-  }, [mode])
 
   const timerKey = user ? `ee_timer_sujet_${user.id}_${sujetNumber}` : null
 
@@ -107,21 +99,11 @@ export default function EESujetWorkspace() {
       setTaskErrors(nextErrors)
 
       const anyEvaluating = taskList.some((_, i) => nextStatuses[i] === 'evaluating')
-      const allDone = taskList.length > 0 && taskList.every((_, i) => nextFeedback[i])
-      const practiceMode = (() => {
-        try {
-          return localStorage.getItem('tcf_ee_practice_mode') === 'exam' ? 'exam' : 'single'
-        } catch {
-          return 'single'
-        }
-      })()
-      if (allDone) {
+      if (taskList.length > 0 && taskList.every((_, i) => nextFeedback[i])) {
         setPhase('results')
-      } else if (anyEvaluating && practiceMode === 'exam') {
-        // Full exam: leave writing UI while AI marks the batch
+      } else if (anyEvaluating) {
         setPhase('pending')
       } else {
-        // Single-task practice: stay on writing so other tasks remain available
         setPhase('writing')
       }
 
@@ -152,24 +134,13 @@ export default function EESujetWorkspace() {
   // While this sujet is pending, live-refresh the moment its own results
   // land (the notification bell also announces it, but this saves the
   // student from having to navigate away and back if they're still here).
-  const anyTaskEvaluating = Object.values(taskStatuses).some((s) => s === 'evaluating')
-
   useEffect(() => {
-    if (!user) return
-    // Full exam pending screen OR single-task practice while a task is evaluating
-    if (phase !== 'pending' && !(phase === 'writing' && anyTaskEvaluating)) return
+    if (phase !== 'pending' || !user) return
     const unsubscribe = subscribeToNotifications(user.id, (notif) => {
       if (notif.link === `/ee/${sujetNumber}`) load()
     })
-    // Light poll as fallback if notification is delayed
-    const id = setInterval(() => {
-      if (document.visibilityState === 'visible') load()
-    }, 20000)
-    return () => {
-      unsubscribe()
-      clearInterval(id)
-    }
-  }, [phase, user?.id, sujetNumber, load, anyTaskEvaluating])
+    return unsubscribe
+  }, [phase, user?.id, sujetNumber, load])
 
   const task = tasks[step]
   const wordCount = texts[step]?.trim() ? texts[step].trim().split(/\s+/).length : 0
@@ -343,73 +314,6 @@ export default function EESujetWorkspace() {
     [tasks, texts, feedbacks, taskStatuses, taskErrors, sujetNumber, timerKey, user?.id]
   )
 
-  /** Submit only the current task (practice mode). */
-  async function handleSubmitOne() {
-    if (submitLockRef.current || submittingOne) return
-    const t = tasks[step]
-    const content = texts[step]
-    if (!t) return
-    if (!content?.trim()) {
-      toast.error("Écris d'abord ta réponse pour cette tâche.")
-      return
-    }
-    if (feedbacks[step]) {
-      toast('Cette tâche est déjà corrigée.', { icon: '✓' })
-      return
-    }
-    if (taskStatuses[step] === 'evaluating') {
-      toast('Cette tâche est déjà en cours de correction.', { icon: '⏳' })
-      return
-    }
-
-    const lock = await getActiveEvaluation(user.id, 'EE', Number(sujetNumber))
-    if (lock) {
-      setOtherLock(lock)
-      toast.error(`Une correction ${lock.kind} est déjà en cours (sujet ${lock.sujetNumber}). Attends qu'elle se termine.`)
-      return
-    }
-
-    submitLockRef.current = true
-    setSubmittingOne(true)
-    try {
-      const dayNumber = await getActiveDay(user.id)
-      const saved = await saveDraft(user.id, {
-        topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
-        prompt: t.prompt,
-        draftContent: content,
-        dayNumber,
-      })
-      await submitForEvaluation({
-        submissionId: saved.id,
-        prompt: t.prompt,
-        essay: content,
-        topicNumber: encodeTopicNumber(sujetNumber, t.taskType),
-        taskType: t.taskType,
-        minWords: t.minWords,
-        maxWords: t.maxWords,
-      })
-      setTaskStatuses((s) => ({ ...s, [step]: 'evaluating' }))
-      setTaskErrors((e) => {
-        const n = { ...e }
-        delete n[step]
-        return n
-      })
-      setSubmissionIds((ids) => ({ ...ids, [step]: saved.id }))
-      toast.success(`${t.taskLabel} envoyée — correction en cours. Tu peux enchaîner une autre tâche.`)
-      try {
-        await markDayModule(user.id, dayNumber, 'ee')
-      } catch {
-        // non-blocking
-      }
-    } catch (err) {
-      toastError(err, `Échec de soumission — ${t.taskLabel}`)
-      setTaskErrors((e) => ({ ...e, [step]: err.message }))
-    } finally {
-      submitLockRef.current = false
-      setSubmittingOne(false)
-    }
-  }
-
   function handleExpire() {
     setExpired(true)
     if (phase === 'writing') handleSubmitAll(true)
@@ -574,9 +478,32 @@ export default function EESujetWorkspace() {
 
         <div className="flex flex-wrap gap-3">
           <button onClick={() => navigate('/ee')} className="btn-primary">Retour aux sujets EE</button>
-          <button onClick={handleRetake} disabled={retaking} className="btn-outline">
+          <button
+            onClick={async () => {
+              if (retaking) return
+              const t = tasks[step]
+              if (!t) return
+              if (!window.confirm(`Refaire uniquement ${t.taskLabel} ? Les autres tâches restent intactes.`)) return
+              setRetaking(true)
+              try {
+                await retakeTask(user.id, encodeTopicNumber(sujetNumber, t.taskType))
+                toast.success(`${t.taskLabel} réinitialisée`)
+                navigate(`/ee/${sujetNumber}?mode=single&task=${t.taskType}`, { replace: true })
+                window.location.reload()
+              } catch (err) {
+                toastError(err, 'Impossible de réinitialiser cette tâche')
+                setRetaking(false)
+              }
+            }}
+            disabled={retaking}
+            className="btn-outline"
+          >
             {retaking ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
-            Refaire ce sujet
+            Refaire cette tâche
+          </button>
+          <button onClick={handleRetake} disabled={retaking} className="btn-secondary">
+            {retaking ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+            Refaire tout le sujet (3 tâches)
           </button>
         </div>
       </div>
@@ -588,56 +515,14 @@ export default function EESujetWorkspace() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/ee')}
           className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600"
         >
           <ArrowLeft size={16} /> Retour aux sujets
         </button>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full border border-slate-200 bg-slate-50 p-0.5 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800">
-            <button
-              type="button"
-              onClick={() => setMode('single')}
-              className={`rounded-full px-3 py-1.5 transition ${
-                mode === 'single'
-                  ? 'bg-brand-500 text-white shadow'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-              }`}
-            >
-              Tâche par tâche
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('exam')}
-              className={`rounded-full px-3 py-1.5 transition ${
-                mode === 'exam'
-                  ? 'bg-brand-500 text-white shadow'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-              }`}
-            >
-              Examen (3 tâches)
-            </button>
-          </div>
-          {mode === 'exam' && timerKey && (
-            <ExamTimer storageKey={timerKey} armed={hasStarted} onExpire={handleExpire} />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
-        {mode === 'single' ? (
-          <>
-            <strong className="text-brand-600 dark:text-brand-300">Mode entraînement :</strong> soumets une seule tâche
-            quand tu es prêt. Les autres restent disponibles. Idéal si tu n&apos;as pas 60 minutes d&apos;affilée.
-          </>
-        ) : (
-          <>
-            <strong className="text-brand-600 dark:text-brand-300">Mode examen :</strong> chronomètre 60 min, les trois
-            tâches comme le jour J. La soumission envoie tout le sujet à la correction IA.
-          </>
-        )}
+        {timerKey && <ExamTimer storageKey={timerKey} armed={hasStarted} onExpire={handleExpire} />}
       </div>
 
       {otherLock && (
@@ -684,12 +569,8 @@ export default function EESujetWorkspace() {
             }`}
           >
             {t.taskLabel}
-            {feedbacks[i] && <span className="ml-1 text-emerald-500">✓</span>}
-            {!feedbacks[i] && taskStatuses[i] === 'evaluating' && <span className="ml-1 text-brand-500">⏳</span>}
             {taskErrors[i] && <span className="ml-1 text-red-500">!</span>}
-            {!feedbacks[i] && taskStatuses[i] !== 'evaluating' && !taskErrors[i] && texts[i]?.trim().length > 0 && (
-              <span className="ml-1 text-amber-500">●</span>
-            )}
+            {!taskErrors[i] && texts[i]?.trim().length > 0 && <span className="ml-1 text-amber-500">●</span>}
           </button>
         ))}
       </div>
@@ -719,12 +600,7 @@ export default function EESujetWorkspace() {
               onChange={(e) => updateText(e.target.value)}
               onBlur={handleTextareaBlur}
               rows={14}
-              disabled={
-                submittingAll ||
-                submittingOne ||
-                taskStatuses[step] === 'evaluating' ||
-                !!feedbacks[step]
-              }
+              disabled={submittingAll}
               className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed focus:outline-none disabled:opacity-60"
               placeholder="Écris ta réponse ici..."
             />
@@ -736,55 +612,13 @@ export default function EESujetWorkspace() {
             </div>
           </div>
 
-          {mode === 'single' ? (
-            <>
-              <button
-                onClick={handleSubmitOne}
-                disabled={
-                  submittingOne ||
-                  submittingAll ||
-                  !!otherLock ||
-                  !!feedbacks[step] ||
-                  taskStatuses[step] === 'evaluating'
-                }
-                className="btn-primary w-full"
-              >
-                {submittingOne ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                {feedbacks[step]
-                  ? 'Tâche déjà corrigée'
-                  : taskStatuses[step] === 'evaluating'
-                  ? 'Correction en cours…'
-                  : otherLock
-                  ? 'Une autre correction est en cours'
-                  : `Soumettre ${task?.taskLabel || 'cette tâche'} seulement`}
-              </button>
-              <p className="text-center text-xs text-slate-400">
-                Seule la tâche affichée est envoyée à l&apos;IA. Tu pourras faire les autres plus tard, ou passer en mode
-                examen pour les 3 d&apos;un coup.
-              </p>
-              {feedbacks[step] && (
-                <div className="mt-2">
-                  <AiFeedbackPanel feedback={feedbacks[step]} submittedText={submittedTexts[step] || texts[step]} />
-                </div>
-              )}
-              {tasks.every((_, i) => feedbacks[i]) && (
-                <button onClick={() => setPhase('results')} className="btn-secondary w-full">
-                  Voir le bilan complet du sujet
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock} className="btn-primary w-full">
-                {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                {submittingAll ? 'Envoi en cours...' : otherLock ? 'Une autre correction est en cours' : 'Soumettre le sujet (3 tâches)'}
-              </button>
-              <p className="text-center text-xs text-slate-400">
-                La soumission envoie les trois tâches à l&apos;IA puis clôture ce sujet. Les résultats arrivent par
-                notification.
-              </p>
-            </>
-          )}
+          <button onClick={() => handleSubmitAll(false)} disabled={submittingAll || !!otherLock} className="btn-primary w-full">
+            {submittingAll ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {submittingAll ? 'Envoi en cours...' : otherLock ? 'Une autre correction est en cours' : 'Soumettre le sujet (3 tâches)'}
+          </button>
+          <p className="text-center text-xs text-slate-400">
+            La soumission envoie les trois tâches à l'IA puis clôture ce sujet. Les résultats arrivent par notification.
+          </p>
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
