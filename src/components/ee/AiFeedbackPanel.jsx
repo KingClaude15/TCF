@@ -51,62 +51,102 @@ function asArray(value) {
   return []
 }
 
-/**
- * Render feedback text as structured sections + bullet lists.
- * Recognizes headings like "Points forts :", lines starting with - • *,
- * and numbered lines 1. 2.
- */
-function StructuredText({ text }) {
-  const raw = asText(text).trim()
-  if (!raw) return null
+/** Split a long French evaluation paragraph into readable bullet points. */
+function paragraphToPoints(text) {
+  let t = asText(text).trim()
+  if (!t) return []
 
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-  const blocks = []
-  let current = { title: null, items: [], prose: [] }
+  // Normalize numbered lists glued together: "1. foo 2. bar"
+  t = t.replace(/(\S)\s+(?=\d+[.)]\s)/g, '$1\n')
+  // Normalize " - " mid-sentence lists sometimes used by models
+  t = t.replace(/\s+[–—-]\s+(?=[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ«"'])/g, '\n- ')
 
-  const flush = () => {
-    if (current.title || current.items.length || current.prose.length) {
-      blocks.push(current)
-      current = { title: null, items: [], prose: [] }
-    }
+  // If already has line breaks / bullets, use lines
+  if (/\n/.test(t) || /^\s*([•\-\*–—]|\d+[.)])\s/m.test(t)) {
+    return t
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.replace(/^([•\-\*–—]|\d+[.)])\s+/, ''))
   }
 
-  const isHeading = (line) =>
-    /^(points?\s+forts?|points?\s+[àa]\s+corriger|synth[eè]se|recommandations?|erreurs?|forces?|faiblesses?)\b/i.test(
-      line.replace(/[:：]\s*$/, '')
-    ) || (/[:：]\s*$/.test(line) && line.length < 60)
+  // Extract quoted error examples as their own points when pattern is dense
+  const quoteBits = []
+  const quoteRe = /[«"']([^«"']{2,80})[»"']/g
+  let m
+  while ((m = quoteRe.exec(t)) !== null) {
+    quoteBits.push(m[1].trim())
+  }
 
+  // Split into sentences (French punctuation)
+  const sentences = t
+    .split(/(?<=[.!?…])\s+(?=[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ«"'(0-9])/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 8)
+
+  if (sentences.length >= 2) {
+    return sentences
+  }
+
+  // Last resort: split on "; " or ", des " / ", et "
+  const soft = t.split(/\s*;\s+|\s*,\s+(?=des |les |une |un |du |de la |d'|et des )/i).map((s) => s.trim()).filter((s) => s.length > 12)
+  if (soft.length >= 2) return soft
+
+  return [t]
+}
+
+/**
+ * Classify lines into titled sections when possible.
+ */
+function buildBlocks(text) {
+  const raw = asText(text).trim()
+  if (!raw) return []
+
+  // Pre-normalize glued numbered recommendations
+  const normalized = raw.replace(/(\S)\s+(?=\d+[.)]\s)/g, '$1\n')
+
+  const lines = normalized.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+
+  const isHeading = (line) => {
+    const bare = line.replace(/[:：]\s*$/, '')
+    return /^(points?\s+forts?|points?\s+[àa]\s+corriger|synth[eè]se|recommandations?|erreurs?|forces?|faiblesses?|ce\s+qui\s+va|ce\s+qui\s+ne\s+va\s+pas)\b/i.test(bare)
+      || (/[:：]\s*$/.test(line) && line.length < 55 && !/^[•\-\*–—\d]/.test(line))
+  }
   const isBullet = (line) => /^([•\-\*–—]|\d+[.)])\s+/.test(line)
 
-  for (const line of lines) {
-    if (isHeading(line) && !isBullet(line)) {
-      flush()
-      current.title = line.replace(/[:：]\s*$/, '')
-      continue
+  // Structured path
+  if (lines.some((l) => isHeading(l) || isBullet(l))) {
+    const blocks = []
+    let cur = { title: null, items: [] }
+    const flush = () => {
+      if (cur.title || cur.items.length) {
+        blocks.push(cur)
+        cur = { title: null, items: [] }
+      }
     }
-    if (isBullet(line)) {
-      current.items.push(line.replace(/^([•\-\*–—]|\d+[.)])\s+/, ''))
-      continue
+    for (const line of lines) {
+      if (isHeading(line) && !isBullet(line)) {
+        flush()
+        cur.title = line.replace(/[:：]\s*$/, '')
+        continue
+      }
+      cur.items.push(line.replace(/^([•\-\*–—]|\d+[.)])\s+/, ''))
     }
-    // Plain sentence: if we already have bullets, treat as item; else prose
-    if (current.items.length) {
-      current.items.push(line)
-    } else {
-      current.prose.push(line)
-    }
+    flush()
+    return blocks
   }
-  flush()
 
-  // Fallback: no structure detected → keep paragraph breaks
-  if (blocks.length === 1 && !blocks[0].title && !blocks[0].items.length) {
-    return (
-      <div className="space-y-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-        {raw.split(/\n+/).map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
-      </div>
-    )
+  // Dense paragraph → auto points under a neutral title
+  const points = paragraphToPoints(raw)
+  if (points.length === 1) {
+    return [{ title: null, items: points }]
   }
+  return [{ title: 'Détail', items: points }]
+}
+
+function StructuredText({ text, forcePoints = true }) {
+  const blocks = buildBlocks(text)
+  if (!blocks.length) return null
 
   return (
     <div className="space-y-3">
@@ -117,17 +157,14 @@ function StructuredText({ text }) {
               {block.title}
             </p>
           )}
-          {block.prose.length > 0 && (
-            <div className="mb-1.5 space-y-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              {block.prose.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
-          )}
-          {block.items.length > 0 && (
-            <ul className="list-disc space-y-1.5 pl-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          {block.items.length === 1 && !forcePoints ? (
+            <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{block.items[0]}</p>
+          ) : (
+            <ul className="list-disc space-y-2 pl-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {block.items.map((item, i) => (
-                <li key={i}>{item}</li>
+                <li key={i} className="pl-0.5">
+                  {item}
+                </li>
               ))}
             </ul>
           )}
@@ -142,7 +179,7 @@ function FeedbackBlock({ title, text }) {
   if (!body) return null
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/40">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">{title}</p>
+      <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">{title}</p>
       <StructuredText text={body} />
     </div>
   )
@@ -244,22 +281,22 @@ export default function AiFeedbackPanel({ feedback, submittedText }) {
                   <AlertTriangle size={13} />
                   {mistakes.length} erreur{mistakes.length > 1 ? 's' : ''} identifiée{mistakes.length > 1 ? 's' : ''} — détail dans l&apos;onglet Erreurs
                 </p>
-                <ul className="space-y-1.5 text-xs text-amber-900/90 dark:text-amber-200/90">
-                  {mistakes.slice(0, 4).map((m, i) => (
-                    <li key={i} className="flex flex-wrap gap-1">
+                <ul className="list-disc space-y-1.5 pl-4 text-xs text-amber-900/90 dark:text-amber-200/90">
+                  {mistakes.slice(0, 5).map((m, i) => (
+                    <li key={i}>
                       <span className="font-medium line-through opacity-80">{asText(m.original)}</span>
-                      <span>→</span>
+                      {' → '}
                       <span className="font-semibold text-emerald-700 dark:text-emerald-400">{asText(m.correction)}</span>
                     </li>
                   ))}
-                  {mistakes.length > 4 && (
-                    <li className="text-amber-700 dark:text-amber-400">+ {mistakes.length - 4} autre(s) dans l&apos;onglet Erreurs</li>
+                  {mistakes.length > 5 && (
+                    <li className="text-amber-700 dark:text-amber-400">+ {mistakes.length - 5} autre(s) dans l&apos;onglet Erreurs</li>
                   )}
                 </ul>
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <FeedbackBlock title="Grammaire" text={asText(feedback.grammar_feedback)} />
               <FeedbackBlock title="Vocabulaire" text={asText(feedback.vocabulary_feedback)} />
               <FeedbackBlock title="Organisation" text={asText(feedback.organization_feedback)} />
@@ -268,7 +305,7 @@ export default function AiFeedbackPanel({ feedback, submittedText }) {
 
             {feedback.recommendations && (
               <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/40">
-                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-brand-700 dark:text-brand-300">
+                <p className="mb-2.5 flex items-center gap-1.5 text-xs font-bold text-brand-700 dark:text-brand-300">
                   <Sparkles size={13} /> Recommandations personnalisées
                 </p>
                 <StructuredText text={asText(feedback.recommendations)} />
