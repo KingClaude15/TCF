@@ -209,92 +209,118 @@ function Tache1Panel() {
     <div className="space-y-6">
       <div className="card space-y-4 border-emerald-200/60 p-5 sm:p-6 dark:border-emerald-900">
         <h2 className="font-heading text-xl font-bold text-emerald-700 dark:text-emerald-300">
-          Tâche 1 — Le courriel (e-mail)
+          Tâche 1 — Message (courriel / message)
         </h2>
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          Situation de la vie courante : inviter, informer, demander, signaler une absence, répondre à un message.
-          C’est la tâche la plus simple — ne lui consacre pas trop de temps.
+          Rédaction d&apos;un message pour décrire, raconter et/ou expliquer, adressé à un ou plusieurs destinataires
+          dont le statut a été précisé dans la consigne.
         </p>
         <InfoGrid
           rows={[
-            ['Ce que tu rédiges', 'Un courriel (e-mail)'],
-            ['Longueur', '60–120 mots (conseil : 80–90)'],
+            ['Objectif', 'Décrire, raconter et/ou expliquer'],
+            ['Format', 'Message / courriel adapté au destinataire'],
+            ['Longueur', '60–120 mots'],
             ['Temps conseillé', 'Environ 10 minutes'],
-            ['Niveau évalué', 'A1–A2 (le plus accessible)'],
           ]}
         />
       </div>
 
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Ce que l’examinateur vérifie</h3>
-        <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
-          <p>
-            <strong>a) Format du courriel</strong> — objet, formule d’appel, corps, formule de politesse finale.
-          </p>
-          <p>
-            <strong>b) Niveau de langue</strong> — « vous » (formel) avec un inconnu / un supérieur ; « tu »
-            (informel) avec un ami. Évite le langage trop familier.
-          </p>
-          <p>
-            <strong>c) Objectif clair</strong> — dès le début, indique pourquoi tu écris (inviter, demander, etc.).
-          </p>
-          <p>
-            <strong>d) Toutes les informations</strong> — lieu, date, heure, etc. selon la consigne.
-          </p>
+      <div className="card space-y-5 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Méthodologie étape par étape</h3>
+
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">1. Salutation</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Salue de manière appropriée le ou les destinataires du message (tu / vous selon la relation).
+            </p>
+            <PhraseBox
+              title="Exemples"
+              phrases={[
+                "Bonjour chers amis, j'espère que vous vous portez bien !",
+                "Bonjour Francis, j'espère que tu vas bien !",
+                'Bonjour, Monsieur.',
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">2. Introduction</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Présente l&apos;objet du message de façon claire. L&apos;introduction doit répondre à :{' '}
+              <em>« Pourquoi j&apos;écris ce message / ce courriel ? »</em>
+            </p>
+            <PhraseBox
+              title="Exemples"
+              phrases={[
+                "Je suis ravi de te donner des infos sur nos nouveaux locaux. Nous avons déménagé au 15 rue des Entrepreneurs, en plein centre-ville.",
+                "Je t'écris car je viens enfin de signer le bail pour mon nouvel appartement !",
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">3. Corps du message</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Fournis les informations demandées : décrire, raconter ou expliquer avec un langage clair adapté à la
+              consigne. Organise le développement en <strong>au plus 3 parties</strong> selon la structure :
+            </p>
+            <div className="mb-2 rounded-xl bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
+              CONNECTEUR LOGIQUE + INFORMATION + COMMENTAIRE
+            </div>
+            <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">
+              <li>
+                Le connecteur logique est précédé d&apos;un point et suivi d&apos;une virgule (ex. :{' '}
+                <em>Tout d&apos;abord, … Ensuite, … Enfin, …</em>).
+              </li>
+              <li>
+                Pour le commentaire, privilégie le <strong>futur simple</strong> ou le <strong>conditionnel</strong>{' '}
+                lorsque la structure de la phrase le permet.
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">4. Conclusion (prise de congé)</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Termine de façon courtoise, avec une phrase qui crée un lien avec le destinataire, puis une formule de
+              politesse.
+            </p>
+            <PhraseBox
+              title="Exemple"
+              phrases={[
+                "Si tu avais un moment de libre le week-end prochain, j'aimerais beaucoup te montrer les lieux. J'espère que tu pourras venir ! À très vite,",
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">5. Signature</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Ajoute ton prénom à la fin pour une identification claire et personnelle.
+            </p>
+            <PhraseBox title="Exemples" phrases={['Claude.', 'Mark.']} />
+          </div>
         </div>
       </div>
 
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Structure étape par étape</h3>
-        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">
-          <li>Objet (sujet du message en quelques mots).</li>
-          <li>Formule d’appel adaptée au destinataire.</li>
-          <li>Phrase d’ouverture polie.</li>
-          <li>Objectif du message en une phrase nette.</li>
-          <li>Informations essentielles (qui, quoi, où, quand…).</li>
-          <li>Phrase de clôture chaleureuse ou utile.</li>
-          <li>Formule de politesse finale.</li>
-        </ol>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PhraseBox
-          title="Phrases prêtes à l’emploi"
-          phrases={[
-            'Madame, Monsieur, / Chers collègues, / Salut…',
-            'J’espère que vous allez bien.',
-            'Je vous écris afin de… / Je vous invite à…',
-            'Cordialement, / À bientôt,',
-            'Je me permets de vous écrire afin de… (niveau +)',
+      <div className="card space-y-3 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Pour maximiser ta note</h3>
+        <Checklist
+          items={[
+            'Majuscule en début de phrase et pour les noms propres',
+            'Éviter les répétitions — vocabulaire riche et adapté',
+            'Utiliser conditionnel / subjonctif quand c’est pertinent (effet niveau +)',
+            'Plusieurs paragraphes et ponctuation soignée (détail C1/C2)',
+            'Respecter la fourchette 60–120 mots',
           ]}
         />
-        <div className="card space-y-3 p-4">
-          <p className="text-xs font-bold uppercase text-slate-500">Avant de passer à la suite</p>
-          <Checklist
-            items={[
-              'Objet renseigné',
-              'Bon registre (tu / vous)',
-              'Objectif explicite',
-              'Toutes les infos demandées',
-              'Formule de politesse',
-              '60–120 mots + relecture',
-            ]}
-          />
-        </div>
       </div>
 
-      <div className="card space-y-3 border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-800 dark:text-amber-200">
-          <AlertTriangle size={16} /> Erreurs à éviter
-        </p>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-amber-900/90 dark:text-amber-100/80">
-          <li>Oublier l’objet</li>
-          <li>Se tromper de registre (tu / vous)</li>
-          <li>Dépasser 120 mots et perdre du temps pour les tâches 2 et 3</li>
-        </ul>
-        <p className="text-sm text-amber-900/90 dark:text-amber-100/80">
-          <strong>Conseil :</strong> reste court (80–90 mots) et termine par une phrase chaleureuse.
-        </p>
+      <div className="flex flex-wrap gap-3">
+        <Link to="/ee" className="btn-primary">
+          Pratiquer la Tâche 1 <ArrowRight size={16} />
+        </Link>
       </div>
     </div>
   )
@@ -303,96 +329,140 @@ function Tache1Panel() {
 function Tache2Panel() {
   return (
     <div className="space-y-6">
-      <div className="card space-y-4 border-amber-200/60 p-5 sm:p-6 dark:border-amber-900">
-        <h2 className="font-heading text-xl font-bold text-amber-700 dark:text-amber-300">
-          Tâche 2 — L’article de blog
+      <div className="card space-y-4 border-sky-200/60 p-5 sm:p-6 dark:border-sky-900">
+        <h2 className="font-heading text-xl font-bold text-sky-700 dark:text-sky-300">
+          Tâche 2 — Article / compte rendu d&apos;expérience
         </h2>
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          Rédige un court article qui raconte une expérience (voyage, formation, sortie…) de façon vivante, pour
-          des lecteurs.
+          Rédaction d&apos;un article, d&apos;un courrier ou d&apos;une note à l&apos;attention de plusieurs
+          destinataires pour faire un compte rendu d&apos;expérience ou un récit (souvent un article de blog).
         </p>
         <InfoGrid
           rows={[
-            ['Ce que tu rédiges', 'Un article de blog'],
-            ['Longueur', '120–150 mots (vise 135–140)'],
-            ['Temps conseillé', 'Environ 18 à 20 minutes'],
-            ['Niveau évalué', 'B1–B2 (intermédiaire)'],
+            ['Objectif', 'Raconter une expérience / faire un compte rendu'],
+            ['Format fréquent', 'Article de blog'],
+            ['Longueur', '120–150 mots'],
+            ['Temps conseillé', 'Environ 18–20 minutes'],
           ]}
         />
-      </div>
-
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Ce que l’examinateur vérifie</h3>
-        <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700 dark:text-slate-300">
-          <li>
-            <strong>Titre accrocheur</strong> — donne envie de lire.
-          </li>
-          <li>
-            <strong>Paragraphes</strong> — pas un seul bloc de texte.
-          </li>
-          <li>
-            <strong>Connecteurs</strong> — d’abord, ensuite, en outre, toutefois, enfin…
-          </li>
-          <li>
-            <strong>Récit vivant</strong> — détails concrets, émotions, question au lecteur en fin de texte.
-          </li>
-        </ul>
-      </div>
-
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Structure</h3>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">
-          <li>
-            <strong>Titre</strong> qui attire l’attention.
-          </li>
-          <li>
-            <strong>§1 — Contexte</strong> : qui, où, quand, comment.
-          </li>
-          <li>
-            <strong>§2 — Récit</strong> : détails, sensations, faits marquants.
-          </li>
-          <li>
-            <strong>§3 — Conclusion</strong> : bilan + question ou invitation au lecteur.
-          </li>
-        </ul>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PhraseBox
-          title="Phrases utiles"
-          phrases={[
-            'Chers lecteurs, je voudrais partager avec vous…',
-            'En outre / toutefois / par ailleurs…',
-            'Ce qui m’a le plus marqué(e), c’est…',
-            'Et vous, avez-vous déjà vécu… ?',
-            'Cette expérience m’a montré que…',
-          ]}
-        />
-        <div className="card space-y-3 p-4">
-          <p className="text-xs font-bold uppercase text-slate-500">Checklist</p>
-          <Checklist
-            items={[
-              'Titre présent',
-              'Trois paragraphes',
-              'Connecteurs utilisés',
-              'Détails concrets',
-              'Question / réflexion finale',
-              '120–150 mots + relecture',
-            ]}
-          />
+        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+          <p className="font-semibold text-ink-900 dark:text-white">C&apos;est quoi un article de blog ?</p>
+          <p className="mt-1.5 leading-relaxed">
+            Un contenu publié en ligne, souvent plus décontracté qu&apos;un article de presse : nouvelles, conseils,
+            opinions, histoires personnelles… Il vise à partager une expérience, interagir avec les lecteurs et
+            donner envie de lire jusqu&apos;au bout.
+          </p>
         </div>
       </div>
 
-      <div className="card space-y-2 border-amber-200 bg-amber-50/50 p-5 text-sm dark:border-amber-900 dark:bg-amber-950/30">
-        <p className="font-semibold text-amber-800 dark:text-amber-200">Erreurs fréquentes</p>
-        <ul className="list-disc space-y-1 pl-5 text-amber-900/90 dark:text-amber-100/80">
-          <li>Tout écrire d’un seul bloc</li>
-          <li>Oublier le titre</li>
-          <li>Récit plat, sans détails ni conclusion personnelle</li>
-        </ul>
-        <p className="text-amber-900/90 dark:text-amber-100/80">
-          <strong>Astuce :</strong> une phrase de type « Cette expérience m’a appris que… » mature le texte.
-        </p>
+      <div className="card space-y-5 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Structure de l&apos;article de blog</h3>
+
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">1. Titre (obligatoire)</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Titre accrocheur en <strong>phrase nominale</strong> (sans verbe conjugué). Si tu n&apos;as pas d&apos;idée
+              au début, laisse un espace et reviens-y à la fin.
+            </p>
+            <PhraseBox
+              title="Exemples"
+              phrases={[
+                "Plongée au cœur de l'enseignement dématérialisé",
+                'Un semestre hors du commun',
+                'Découverte de la danse salsa',
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">2. Salutation</p>
+            <PhraseBox
+              title="Exemples"
+              phrases={[
+                "Bonjour à toutes et à tous, j'espère que vous vous portez bien.",
+                'Chers internautes,',
+                'Chers lecteurs,',
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">3. Introduction et annonce</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Premier paragraphe : présente de façon concise et attractive l&apos;activité ou l&apos;expérience
+              (qui ? quoi ? quand ? où ?).
+            </p>
+            <PhraseBox
+              title="Exemples"
+              phrases={[
+                "Après des années en ville, j'ai décidé de m'installer à la campagne pour une meilleure qualité de vie…",
+                "Le week-end dernier, j'ai assisté à un événement sportif mémorable : la finale de la Coupe de football de notre ville…",
+                "Samedi dernier, j'ai participé à une journée de nettoyage de la forêt boréale dans le nord de la ville d'Ontario.",
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">4. Développement</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Répond à la question <em>« comment ? »</em> : raconte ce que tu as fait, vu, entendu et retenu ; précise
+              ce qui a (ou non) suscité ton intérêt. Utilise la <strong>1<sup>re</sup> personne</strong> (
+              <em>j&apos;ai</em>, <em>je</em>).
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">5. Recommandation</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Propose une recommandation liée à l&apos;expérience vécue.
+            </p>
+            <PhraseBox
+              title="Exemple"
+              phrases={[
+                "Ainsi, chers étudiants lecteurs, je vous recommande vivement de vous inscrire dans une université canadienne afin de bénéficier d'un cursus de qualité et d'acquérir des connaissances précieuses.",
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">6. Remerciement (facultatif)</p>
+            <PhraseBox
+              title="Exemple"
+              phrases={[
+                "Enfin, je tiens à vous remercier d'avoir consacré un peu de votre temps et je vous souhaite une excellente journée.",
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">7. Politesse et signature</p>
+            <PhraseBox
+              title="Exemple"
+              phrases={['À très bientôt,', 'Votre fidèle blogueuse !', 'Cordialement, Claudine.']}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="card space-y-3 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Checklist Tâche 2</h3>
+        <Checklist
+          items={[
+            'Titre nominal accrocheur',
+            'Salutation adaptée aux lecteurs',
+            'Introduction qui pose le cadre (qui / quoi / quand / où)',
+            'Développement à la 1re personne avec détails concrets',
+            'Recommandation claire',
+            '120–150 mots, paragraphes distincts',
+          ]}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link to="/ee" className="btn-primary">
+          Pratiquer la Tâche 2 <ArrowRight size={16} />
+        </Link>
       </div>
     </div>
   )
@@ -401,100 +471,120 @@ function Tache2Panel() {
 function Tache3Panel() {
   return (
     <div className="space-y-6">
-      <div className="card space-y-4 border-rose-200/60 p-5 sm:p-6 dark:border-rose-900">
-        <h2 className="font-heading text-xl font-bold text-rose-700 dark:text-rose-300">
-          Tâche 3 — Le texte d’opinion
+      <div className="card space-y-4 border-violet-200/60 p-5 sm:p-6 dark:border-violet-900">
+        <h2 className="font-heading text-xl font-bold text-violet-700 dark:text-violet-300">
+          Tâche 3 — Texte d&apos;opinion (deux documents)
         </h2>
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          Deux documents présentent des avis opposés sur un sujet de société. Tu reformules les deux positions,
-          puis tu défends la tienne avec arguments et exemples. C’est la tâche la plus difficile — et celle qui
-          pèse le plus sur l’impression de niveau.
+          On te donne <strong>deux documents</strong> (deux opinions sur un fait de société). Tu rédiges un court
+          article qui les compare et dans lequel tu <strong>prends position</strong> clairement.
         </p>
         <InfoGrid
           rows={[
-            ['Ce que tu rédiges', 'Un texte d’opinion / argumentatif'],
-            ['Longueur', '120–180 mots (vise 160–170)'],
-            ['Temps conseillé', 'Environ 25 à 30 minutes'],
-            ['Niveau évalué', 'C1–C2 (le plus élevé)'],
+            ['Objectif', 'Comparer 2 points de vue + prendre position'],
+            ['Documents', '2 textes courts (~90 mots chacun)'],
+            ['Longueur totale', '120–180 mots'],
+            ['Temps conseillé', 'Environ 25–30 minutes'],
+            [
+              'Répartition conseillée',
+              'Partie 1 (synthèse) : 40–60 mots · Partie 2 (opinion) : 80–120 mots',
+            ],
           ]}
         />
       </div>
 
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Ce que l’examinateur vérifie</h3>
-        <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700 dark:text-slate-300">
-          <li>
-            <strong>Reformulation</strong> des deux avis avec tes propres mots (jamais de copie du sujet).
-          </li>
-          <li>
-            <strong>Opinion claire</strong> (« À mon avis… », « Pour ma part… »).
-          </li>
-          <li>
-            <strong>Arguments illustrés</strong> (expérience, chiffre, exemple de société).
-          </li>
-          <li>
-            <strong>Concession</strong> (« Certes…, mais… ») pour nuancer.
-          </li>
-          <li>
-            <strong>Connecteurs</strong> pour structurer le raisonnement.
-          </li>
-        </ul>
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm dark:border-rose-900 dark:bg-rose-950/40">
-          <p className="font-semibold text-rose-800 dark:text-rose-200">Point critique</p>
-          <p className="mt-1 text-rose-900/80 dark:text-rose-100/80">
-            Recopier les phrases du sujet = plagiat et note basse. Lis, comprends, reformule en une ou deux
-            phrases par idée.
-          </p>
+      <div className="card space-y-5 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Méthodologie</h3>
+
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">1. Titre (facultatif)</p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Titre accrocheur en <strong>phrase nominale</strong> (sans verbe conjugué), qui résume l&apos;idée
+              générale des deux documents.
+            </p>
+            <PhraseBox title="Exemple" phrases={["Impact de l'amitié au travail"]} />
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">
+              2. Premier paragraphe — Introduction / synthèse (40–60 mots)
+            </p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              Présente le débat et résume fidèlement les deux documents <em>avec tes propres mots</em> (ne copie pas
+              le sujet).
+            </p>
+            <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-800/40">
+              <p className="font-semibold text-slate-500">Silhouettes possibles</p>
+              <p className="text-slate-700 dark:text-slate-300">
+                De nos jours, le débat sur [idée générale] divise l&apos;opinion publique. Certaines personnes pensent
+                que [résumé doc. 1]. Alors que d&apos;autres pensent que [résumé doc. 2].
+              </p>
+              <p className="text-slate-700 dark:text-slate-300">
+                Aujourd&apos;hui, la question sur [idée générale] divise l&apos;opinion publique. Selon [auteur 1],
+                [résumé doc. 1]. Quant à [auteur 2], [résumé doc. 2].
+              </p>
+              <p className="text-slate-700 dark:text-slate-300">
+                Selon le premier document, [résumé doc. 1]. Le second document, quant à lui, souligne que [résumé
+                doc. 2].
+              </p>
+            </div>
+            <div className="mt-3">
+              <PhraseBox
+                title="Exemple complet"
+                phrases={[
+                  "La question de la gratuité des musées suscite des débats passionnés. Certaines personnes soulignent les risques d'une forte fréquentation et l'épuisement des ressources financières. Par contre, d'autres disent que la gratuité favorise un accès à la culture pour le plus grand nombre…",
+                ]}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-bold text-ink-900 dark:text-white">
+              3. Deuxième paragraphe — Argumentation (80–120 mots)
+            </p>
+            <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+              <strong>Ta position</strong> + <strong>1 à 2 arguments</strong> + <strong>1 limite / nuance</strong>
+            </p>
+            <div className="space-y-2 rounded-xl border border-violet-100 bg-violet-50/80 p-4 text-sm dark:border-violet-900 dark:bg-violet-950/30">
+              <p className="font-semibold text-violet-800 dark:text-violet-200">Silhouette</p>
+              <ul className="list-disc space-y-1.5 pl-4 text-slate-700 dark:text-slate-300">
+                <li>
+                  <strong>À mon avis,</strong> [position claire, sans réserve].
+                </li>
+                <li>
+                  <strong>En effet,</strong> [argument principal : plan + explication + conséquence + exemple].
+                </li>
+                <li>
+                  <strong>De plus,</strong> [argument de renfort — facultatif].
+                </li>
+                <li>
+                  <strong>Cependant,</strong> [nuance / limite + explication + conséquence + exemple facultatif].
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="card space-y-4 p-5 sm:p-6">
-        <h3 className="font-heading text-base font-bold">Structure</h3>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700 dark:text-slate-300">
-          <li>
-            <strong>Titre</strong> souvent sous forme de question.
-          </li>
-          <li>
-            <strong>§1 (court)</strong> — les deux opinions reformulées (≈ 40–60 mots).
-          </li>
-          <li>
-            <strong>§2 (long)</strong> — ton avis, 2–3 arguments avec exemples, concession finale.
-          </li>
-        </ul>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PhraseBox
-          title="Formules d’argumentation"
-          phrases={[
-            'D’un côté… De l’autre…',
-            'À mon avis… / Pour ma part…',
-            'Premièrement… Deuxièmement… Enfin…',
-            'Certes…, mais je reste convaincu(e) que…',
-            'Bien que cet argument soit recevable… (niveau +)',
+      <div className="card space-y-3 p-5 sm:p-6">
+        <h3 className="font-heading text-base font-bold">Checklist Tâche 3</h3>
+        <Checklist
+          items={[
+            'Synthèse des 2 documents sans plagiat',
+            'Position personnelle claire dès le 2e paragraphe',
+            'Au moins un argument développé (explication + conséquence + exemple)',
+            'Une nuance ou une limite',
+            'Connecteurs logiques (En effet, De plus, Cependant…)',
+            'Total 120–180 mots (équilibre 40–60 + 80–120)',
           ]}
         />
-        <div className="card space-y-3 p-4">
-          <p className="text-xs font-bold uppercase text-slate-500">Checklist</p>
-          <Checklist
-            items={[
-              'Titre (idéalement question)',
-              'Deux avis reformulés',
-              'Opinion + 2–3 arguments',
-              'Concession présente',
-              'Connecteurs',
-              '120–180 mots + relecture',
-            ]}
-          />
-        </div>
       </div>
 
-      <div className="card space-y-2 p-5 text-sm">
-        <p className="font-semibold text-ink-900 dark:text-white">Détail qui fait gagner des points</p>
-        <p className="text-slate-700 dark:text-slate-300">
-          Une concession avec subjonctif (« Bien que cet argument soit recevable… ») signale souvent un
-          niveau avancé. Varie aussi les connecteurs pour éviter les répétitions.
-        </p>
+      <div className="flex flex-wrap gap-3">
+        <Link to="/ee" className="btn-primary">
+          Pratiquer la Tâche 3 <ArrowRight size={16} />
+        </Link>
       </div>
     </div>
   )
