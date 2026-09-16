@@ -17,3 +17,7 @@ export const setUserStatus = (userId, status) => callAdminUsers({ action: 'setSt
 export const setUserRole = (userId, role) => callAdminUsers({ action: 'setRole', userId, role })
 
 export const deleteUser = (userId) => callAdminUsers({ action: 'delete', userId })
+
+/** Grant or clear access period (days from today). days=0 or null → free/unlimited. */
+export const setUserAccessDays = (userId, days, note = null) =>
+  callAdminUsers({ action: 'setAccessDays', userId, days, note })

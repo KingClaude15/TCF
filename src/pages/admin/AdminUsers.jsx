@@ -2,10 +2,11 @@ import { toastError } from '../../lib/errorMessages'
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
-import { listAllUsers, createUser, setUserStatus, setUserRole, deleteUser } from '../../services/adminService'
+import { listAllUsers, createUser, setUserStatus, setUserRole, deleteUser, setUserAccessDays } from '../../services/adminService'
 import Modal from '../../components/ui/Modal'
 import EmptyState from '../../components/ui/EmptyState'
 import { UserPlus, Users, Trash2, Loader2, ShieldCheck, Search } from 'lucide-react'
+// Calendar used for access days UI
 import clsx from 'clsx'
 
 const STATUS_STYLES = {
@@ -80,6 +81,29 @@ export default function AdminUsers() {
     }
   }
 
+  async function handleAccessDays(userId, days) {
+    const n = days === '' || days == null ? 0 : Number(days)
+    if (Number.isNaN(n) || n < 0) {
+      toast.error('Indique un nombre de jours valide (0 = illimité / gratuit)')
+      return
+    }
+    const label = n === 0 ? 'accès illimité (gratuit)' : `${n} jour(s) à partir d'aujourd'hui`
+    if (!confirm(`Définir ${label} pour cet utilisateur ?`)) return
+    try {
+      const res = await setUserAccessDays(userId, n === 0 ? 0 : n)
+      if (res?.unlimited || n === 0) {
+        toast.success('Accès illimité / gratuit enregistré')
+      } else {
+        const until = res?.paidUntil ? new Date(res.paidUntil).toLocaleDateString('fr-FR') : ''
+        toast.success(`Accès activé pour ${n} jour(s)${until ? ` (jusqu'au ${until})` : ''}`)
+      }
+      load()
+    } catch (err) {
+      toastError(err, 'Impossible de définir la durée d\'accès')
+    }
+  }
+
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return users.filter((u) => {
@@ -136,7 +160,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Rôle</th>
                 <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Jour</th>
+                <th className="px-4 py-3">Accès (jours)</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -146,6 +170,7 @@ export default function AdminUsers() {
                   <td className="px-4 py-2.5 font-medium">
                     {u.full_name || '—'}
                     {u.id === currentUser.id && <span className="ml-1.5 text-[10px] text-slate-400">(toi)</span>}
+                    <div className="text-[10px] font-normal text-slate-400">Jour {u.current_day ?? 1}/41</div>
                   </td>
                   <td className="px-4 py-2.5 text-slate-500">{u.email}</td>
                   <td className="px-4 py-2.5">
@@ -167,7 +192,12 @@ export default function AdminUsers() {
                       {STATUS_LABELS[u.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-500">{u.current_day}/41</td>
+                  <td className="px-4 py-3">
+                    <AccessDaysCell
+                      user={u}
+                      onSave={(days) => handleAccessDays(u.id, days)}
+                    />
+                  </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
                       {busyId === u.id ? (
@@ -219,6 +249,62 @@ export default function AdminUsers() {
       )}
 
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={load} isSuperAdmin={isSuperAdmin} />
+    </div>
+  )
+}
+
+
+function AccessDaysCell({ user, onSave }) {
+  const activeUntil =
+    user.paid_until && new Date(user.paid_until) > new Date()
+      ? new Date(user.paid_until)
+      : null
+  const [days, setDays] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      await onSave(days)
+      setDays('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="min-w-[140px] space-y-1">
+      <div className="text-[11px] text-slate-500">
+        {user.subscription_status === 'active' && activeUntil ? (
+          <span className="font-semibold text-emerald-600">
+            Actif → {activeUntil.toLocaleDateString('fr-FR')}
+          </span>
+        ) : user.subscription_status === 'pending' ? (
+          <span className="text-amber-600">Paiement en attente</span>
+        ) : (
+          <span>Gratuit / illimité</span>
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min={0}
+          max={3650}
+          placeholder="jours"
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          className="input-field w-16 px-1.5 py-1 text-xs"
+          title="Nombre de jours d'accès à partir d'aujourd'hui (0 = gratuit)"
+        />
+        <button
+          type="button"
+          disabled={saving || days === ''}
+          onClick={save}
+          className="rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
+        >
+          {saving ? '…' : 'OK'}
+        </button>
+      </div>
     </div>
   )
 }

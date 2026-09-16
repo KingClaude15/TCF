@@ -49,7 +49,7 @@ serve(async (req) => {
     if (action === 'list') {
       const { data: profiles, error } = await admin
         .from('profiles')
-        .select('id, full_name, email, role, status, current_day, current_streak, created_at')
+        .select('id, full_name, email, role, status, current_day, current_streak, created_at, subscription_status, paid_until, payment_note')
         .order('created_at', { ascending: false })
       if (error) throw error
       return json({ users: profiles })
@@ -97,6 +97,47 @@ serve(async (req) => {
       const { error } = await admin.from('profiles').update({ role }).eq('id', userId)
       if (error) throw error
       return json({ success: true })
+    }
+
+    if (action === 'setAccessDays') {
+      const { userId, days, note } = params
+      if (!userId) throw new Error('userId required')
+      const n = Number(days)
+
+      // days null/empty/0 → unlimited free (clear paid period)
+      if (days === null || days === '' || n === 0) {
+        const { error } = await admin.from('profiles').update({
+          subscription_status: 'free',
+          paid_until: null,
+          payment_note: note || 'Accès illimité (jours réinitialisés)',
+        }).eq('id', userId)
+        if (error) throw error
+        return json({ success: true, paidUntil: null, unlimited: true })
+      }
+
+      if (!Number.isFinite(n) || n < 0) throw new Error('Nombre de jours invalide')
+      if (n > 3650) throw new Error('Maximum 3650 jours')
+
+      const { data: profile, error: pErr } = await admin
+        .from('profiles')
+        .select('id, paid_until')
+        .eq('id', userId)
+        .single()
+      if (pErr) throw pErr
+
+      const now = new Date()
+      // Always start from now when admin sets an explicit duration
+      // (clear intent: "this user has N days from today")
+      const paidUntil = new Date(now.getTime() + n * 24 * 60 * 60 * 1000)
+
+      const { error } = await admin.from('profiles').update({
+        subscription_status: 'active',
+        paid_until: paidUntil.toISOString(),
+        payment_note: note || `Accès manuel: ${n} jour(s) — admin`,
+      }).eq('id', userId)
+      if (error) throw error
+
+      return json({ success: true, paidUntil: paidUntil.toISOString(), days: n })
     }
 
     if (action === 'delete') {
