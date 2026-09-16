@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 import { useNavigate, Link } from 'react-router-dom'
 import NotificationBell from './NotificationBell'
+import { AccessDaysChip } from '../AccessStatusBanner'
 
 export default function Topbar({ onMenuClick, title }) {
   const { theme, toggleTheme } = useTheme()
@@ -34,6 +35,7 @@ export default function Topbar({ onMenuClick, title }) {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
+        <AccessDaysChip />
         <NotificationBell />
         <button
           onClick={toggleTheme}

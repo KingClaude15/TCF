@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AccessStatusBanner from '../components/AccessStatusBanner'
 import { useAuth } from '../context/AuthContext'
 import { useChallengeData } from '../hooks/useChallengeData'
 import { updateProfile, deleteMyAccount } from '../services/profileService'
@@ -444,6 +445,8 @@ export default function Profile() {
 
       {activeTab === 'settings' && (
         <div className="space-y-6">
+      <AccessStatusBanner />
+
           <ActiveSessions />
 
           <div className="card space-y-4 border-red-200 p-6 dark:border-red-900/60">

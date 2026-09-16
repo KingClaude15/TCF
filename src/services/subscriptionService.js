@@ -221,3 +221,28 @@ export async function rejectPayment(requestId, adminUserId, adminNote) {
 
   return true
 }
+
+
+/**
+ * Human-readable access summary for UI (days left).
+ * @returns {{ kind: 'staff'|'active'|'expired'|'free'|'pending', daysLeft?: number, until?: Date }}
+ */
+export function getAccessSummary(profile) {
+  if (!profile) return { kind: 'free' }
+  if (['admin', 'super_admin', 'moderator'].includes(profile.role)) {
+    return { kind: 'staff' }
+  }
+  if (profile.subscription_status === 'pending') {
+    return { kind: 'pending' }
+  }
+  if (profile.subscription_status === 'active' && profile.paid_until) {
+    const until = new Date(profile.paid_until)
+    const ms = until.getTime() - Date.now()
+    const daysLeft = Math.ceil(ms / (24 * 60 * 60 * 1000))
+    if (daysLeft <= 0 || Number.isNaN(until.getTime())) {
+      return { kind: 'expired', until, daysLeft: 0 }
+    }
+    return { kind: 'active', daysLeft, until }
+  }
+  return { kind: 'free' }
+}

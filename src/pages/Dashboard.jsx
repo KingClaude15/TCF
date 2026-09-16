@@ -4,6 +4,7 @@ import { useChallengeData } from '../hooks/useChallengeData'
 import StatCard from '../components/ui/StatCard'
 import ProgressBar from '../components/ui/ProgressBar'
 import EmptyState from '../components/ui/EmptyState'
+import AccessStatusBanner from '../components/AccessStatusBanner'
 
 export default function Dashboard() {
   const { loading, profile, progressRows, coResults, ceResults, completionPct, activeDay, coAverage, ceAverage, eeAverage, eoAverage } =
@@ -28,6 +29,8 @@ export default function Dashboard() {
           Jour {activeDay} sur 41 — continue sur ta lancée.
         </p>
       </div>
+
+      <AccessStatusBanner />
 
       {/* Continue today's challenge — hero banner */}
       <div className="page-hero bg-gradient-to-br from-brand-600 via-brand-700 to-ink-900 p-6 sm:p-8">
