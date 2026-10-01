@@ -5,7 +5,7 @@
 
 import { EE_ERROR_BANK_MODULES } from './eeErrorBank'
 import { EXTRA_LESSONS } from './eeErrorBankExtra'
-import { BANK60_EXTRA } from './eeQuestionBank60'
+import { CONNECTEURS_ARGS_BANK } from './eeConnecteursArgsBank'
 
 const BASE_CURRICULUM = [
   {
@@ -1276,7 +1276,7 @@ function withExtras(modules) {
   return modules.map((m) => {
     const extra = [
       ...(EXTRA_LESSONS[m.id] || []),
-      ...(BANK60_EXTRA[m.id] || []),
+      ...(CONNECTEURS_ARGS_BANK[m.id] || []),
     ]
     if (!extra.length) return m
     return { ...m, lessons: [...m.lessons, ...extra] }
