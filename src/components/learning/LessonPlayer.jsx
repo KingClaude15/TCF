@@ -53,10 +53,6 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
               {block.title}
             </p>
           )}
-          <p className="text-slate-800 dark:text-slate-200">
-            <strong className="text-brand-800 dark:text-brand-200">En bref : </strong>
-            {block.summary}
-          </p>
           {!correct && block.correctAnswer && (
             <p className="text-slate-700 dark:text-slate-300">
               <span className="font-semibold text-red-600 dark:text-red-400">Ta réponse : </span>
@@ -66,9 +62,15 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
               {block.correctAnswer}
             </p>
           )}
-          {block.detail && (
+          {block.summary && (
+            <p className="leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
+              <strong className="text-brand-800 dark:text-brand-200">Explication : </strong>
+              {block.summary}
+            </p>
+          )}
+          {block.detail && block.detail !== block.summary && (
             <p className="leading-relaxed text-slate-700 dark:text-slate-300">
-              <strong>Pourquoi en détail : </strong>
+              <strong>Complément : </strong>
               {block.detail}
             </p>
           )}
@@ -147,17 +149,19 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     setPicked(idx)
     const correct = idx === current.answer
     setScore((s) => ({ ok: s.ok + (correct ? 1 : 0), total: s.total + 1 }))
-    setHistory((h) => [
-      ...h,
-      {
+    setHistory((h) => {
+      const entry = {
+        qi,
         q: current.q,
         options: current.options,
         answer: current.answer,
         picked: idx,
         explain: current.explain,
         correct,
-      },
-    ])
+      }
+      const without = h.filter((x) => x.qi !== qi)
+      return [...without, entry]
+    })
   }
 
   function nextQuestion() {
@@ -401,12 +405,29 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
                   picked={picked}
                   correct={picked === current.answer}
                 />
-                <div className="flex flex-wrap justify-end gap-2">
-                  <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                    Retour
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={qi === 0}
+                      onClick={() => {
+                        if (qi > 0) {
+                          const prevQi = qi - 1
+                          setQi(prevQi)
+                          const prevH = history.find((h) => h.qi === prevQi) || history[prevQi]
+                          setPicked(prevH && typeof prevH.picked === 'number' ? prevH.picked : null)
+                        }
+                      }}
+                    >
+                      ← Précédent
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
+                      Retour
+                    </button>
+                  </div>
                   <button type="button" className="btn-primary min-w-[5rem]" onClick={nextQuestion}>
-                    {qi + 1 < quiz.length ? 'OK' : 'Bilan'}
+                    {qi + 1 < quiz.length ? 'Suivant →' : 'Bilan'}
                   </button>
                 </div>
               </div>

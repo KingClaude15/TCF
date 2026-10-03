@@ -106,7 +106,7 @@ const RULE_BANK = [
     tip: 'Réécris la relative en deux phrases : la préposition qui apparaît guide le choix du relatif.',
   },
   {
-    keys: [' lui ', 'leur ', 'pronom personnel', ' en ', ' y ', 'me/te/nous', 'le/la/les +'],
+    keys: [' lui ', 'leur ', 'pronom personnel', ' y ', 'me/te/nous', 'le/la/les +', 'remplace de +', 'remplace à +'],
     title: 'Pronoms personnels (COD, COI, en, y)',
     detail:
       'COD : le / la / les. COI personne : lui / leur. ' +
@@ -194,49 +194,63 @@ export function expandExplanation(explain, ctx = {}) {
       ? explain
       : explain?.summary || explain?.text || explain?.detail || 'Regarde la bonne réponse et la règle associée.'
 
-  const blob = `${summary} ${ctx.q || ''} ${(ctx.options || []).join(' ')}`.toLowerCase()
+  const correctAnswer =
+    ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : undefined
+  const yourAnswer =
+    ctx.options && ctx.picked != null ? ctx.options[ctx.picked] : undefined
+
+  // Rich explanations already contain "Correct / Incorrect / why" — use them as-is.
+  // Do NOT replace with a RULE_BANK paragraph that may match a random keyword
+  // (e.g. "en" inside "en effet" → wrong "Pronoms personnels" block).
+  const isRich =
+    typeof summary === 'string' &&
+    (summary.length >= 60 ||
+      /correct\s*:/i.test(summary) ||
+      /incorrect\s*:/i.test(summary) ||
+      /bonne réponse/i.test(summary))
+
+  if (isRich) {
+    return {
+      summary,
+      title: null, // hide generic rule title when we have a full custom explanation
+      detail: null, // everything is already in summary
+      tip: null,
+      correctAnswer,
+      yourAnswer,
+      correct: ctx.correct,
+    }
+  }
+
+  // Short explains: try to match a pedagogical rule for extra context
+  const blob = `${summary} ${ctx.q || ''}`.toLowerCase()
+  // Prefer matching on question only (not options), to avoid distractors triggering wrong rules
+  const qBlob = (ctx.q || '').toLowerCase()
 
   let matched = null
   for (const rule of RULE_BANK) {
-    if (rule.keys.some((k) => blob.includes(k.toLowerCase()))) {
+    if (rule.keys.some((k) => qBlob.includes(k.toLowerCase()) || blob.includes(k.toLowerCase()))) {
       matched = rule
       break
     }
   }
 
-  const correctAnswer =
-    (explain && typeof explain === 'object' && explain.correctAnswer) ||
-    (ctx.options && ctx.answer != null ? ctx.options[ctx.answer] : undefined)
-
-  // Long, already pedagogical summaries (rewritten explains) → use as-is
-  const isRichSummary = typeof summary === 'string' && summary.length >= 60
-
-  if (explain && typeof explain === 'object') {
-    return {
-      summary: explain.summary || explain.text || summary,
-      title: explain.title || matched?.title,
-      detail:
-        explain.detail ||
-        (isRichSummary ? matched?.detail : buildContextualDetail(summary, ctx, matched?.detail)),
-      tip: explain.tip || matched?.tip,
-      correctAnswer,
-      yourAnswer: ctx.options && ctx.picked != null ? ctx.options[ctx.picked] : undefined,
-      correct: ctx.correct,
-    }
+  // Prefer connecteurs rule when the question is clearly about connecteurs
+  if (
+    /connecteur|toutefois|néanmoins|certes|par conséquent|en effet|de plus|de surcroît/i.test(
+      `${ctx.q || ''} ${summary}`
+    )
+  ) {
+    const conn = RULE_BANK.find((r) => r.title && /connecteur/i.test(r.title))
+    if (conn) matched = conn
   }
 
-  // String explain
   return {
-    // Prefer the rich summary when we have one; otherwise keep the short line
-    // and put the full justification in "detail"
-    summary: isRichSummary ? summary : summary,
-    title: matched?.title,
-    detail: isRichSummary
-      ? matched?.detail
-      : buildContextualDetail(summary, ctx, matched?.detail),
-    tip: matched?.tip,
+    summary,
+    title: matched?.title || null,
+    detail: buildContextualDetail(summary, ctx, matched?.detail),
+    tip: matched?.tip || null,
     correctAnswer,
-    yourAnswer: ctx.options && ctx.picked != null ? ctx.options[ctx.picked] : undefined,
+    yourAnswer,
     correct: ctx.correct,
   }
 }
