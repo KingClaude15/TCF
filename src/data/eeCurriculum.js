@@ -5,7 +5,7 @@
 
 import { EE_ERROR_BANK_MODULES } from './eeErrorBank'
 import { EXTRA_LESSONS } from './eeErrorBankExtra'
-import { CONNECTEURS_ARGS_BANK } from './eeConnecteursArgsBank'
+import { QUIZ_LANGUE_100_MODULE } from './eeQuizLangue100'
 
 const BASE_CURRICULUM = [
   {
@@ -1274,19 +1274,13 @@ const BASE_CURRICULUM = [
 
 function withExtras(modules) {
   return modules.map((m) => {
-    const extra = [
-      ...(EXTRA_LESSONS[m.id] || []),
-      ...(CONNECTEURS_ARGS_BANK[m.id] || []),
-    ]
-    if (!extra.length) return m
+    const extra = EXTRA_LESSONS[m.id]
+    if (!extra) return m
     return { ...m, lessons: [...m.lessons, ...extra] }
   })
 }
 
-export const EE_CURRICULUM = [
-  ...withExtras(BASE_CURRICULUM),
-  ...withExtras(EE_ERROR_BANK_MODULES),
-]
+export const EE_CURRICULUM = [...BASE_CURRICULUM, ...withExtras(EE_ERROR_BANK_MODULES), QUIZ_LANGUE_100_MODULE]
 
 export function getAllLessons() {
   return EE_CURRICULUM.flatMap((m) =>
