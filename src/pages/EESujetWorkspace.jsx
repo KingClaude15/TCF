@@ -536,7 +536,7 @@ export default function EESujetWorkspace() {
               )}
             </h3>
             {feedbacks[i] ? (
-              <AiFeedbackPanel feedback={feedbacks[i]} submittedText={submittedTexts[i]} />
+              <AiFeedbackPanel feedback={feedbacks[i]} submittedText={submittedTexts[i]} prompt={t.prompt} />
             ) : (
               <p className="text-sm text-slate-400">Aucune réponse soumise pour cette tâche.</p>
             )}
@@ -721,6 +721,8 @@ export default function EESujetWorkspace() {
                   <AiFeedbackPanel
                     feedback={feedbacks[step]}
                     submittedText={submittedTexts[step] || texts[step]}
+                    prompt={task.prompt}
+                    taskLabel={task.taskLabel}
                   />
                   <button
                     type="button"

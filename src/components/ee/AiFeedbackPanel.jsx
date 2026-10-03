@@ -185,7 +185,7 @@ function FeedbackBlock({ title, text }) {
   )
 }
 
-export default function AiFeedbackPanel({ feedback, submittedText }) {
+export default function AiFeedbackPanel({ feedback, submittedText, prompt, taskLabel }) {
   const [tab, setTab] = useState('overview')
   if (!feedback) return null
 
@@ -210,24 +210,33 @@ export default function AiFeedbackPanel({ feedback, submittedText }) {
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/30">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300">
-            <Sparkles size={18} />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-ink-900 dark:text-white">Évaluation IA</p>
-            <p className="text-[11px] text-slate-500">Feedback structuré — erreurs, points et recommandations</p>
+      {/* Consigne + score — no "Évaluation IA" marketing header */}
+      <div className="space-y-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {taskLabel ? (
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{taskLabel}</p>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              Niveau {cefr}
+            </span>
+            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+              {score} / 20
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            Niveau {cefr}
-          </span>
-          <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
-            {score} / 20
-          </span>
-        </div>
+        {prompt ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900/60">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-400">
+              Consigne
+            </p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-900 dark:text-slate-100">
+              {prompt}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 pt-2 dark:border-slate-800">
