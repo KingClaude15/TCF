@@ -3,6 +3,23 @@ import { ArrowLeft, CheckCircle2, ChevronRight, Lightbulb, XCircle, BookOpen, Sp
 import clsx from 'clsx'
 import { expandExplanation } from '../../lib/explanationHelper'
 
+
+function normalizeBlank(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/['']/g, "'")
+    .replace(/\s+/g, ' ')
+}
+
+function isBlankCorrect(userInput, answers) {
+  const n = normalizeBlank(userInput)
+  if (!n) return false
+  return (answers || []).some((a) => normalizeBlank(a) === n)
+}
+
 const SESSION_PREFIX = 'tcf_lesson_session:'
 
 function sessionKey(lessonId) {
@@ -53,6 +70,10 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
               {block.title}
             </p>
           )}
+          <p className="text-slate-800 dark:text-slate-200">
+            <strong className="text-brand-800 dark:text-brand-200">En bref : </strong>
+            {block.summary}
+          </p>
           {!correct && block.correctAnswer && (
             <p className="text-slate-700 dark:text-slate-300">
               <span className="font-semibold text-red-600 dark:text-red-400">Ta réponse : </span>
@@ -62,15 +83,9 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
               {block.correctAnswer}
             </p>
           )}
-          {block.summary && (
-            <p className="leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
-              <strong className="text-brand-800 dark:text-brand-200">Explication : </strong>
-              {block.summary}
-            </p>
-          )}
-          {block.detail && block.detail !== block.summary && (
+          {block.detail && (
             <p className="leading-relaxed text-slate-700 dark:text-slate-300">
-              <strong>Complément : </strong>
+              <strong>Pourquoi en détail : </strong>
               {block.detail}
             </p>
           )}
@@ -96,6 +111,7 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
   const [step, setStep] = useState(0)
   const [qi, setQi] = useState(0)
   const [picked, setPicked] = useState(null)
+  const [blankInput, setBlankInput] = useState('')
   const [score, setScore] = useState({ ok: 0, total: 0 })
   const [history, setHistory] = useState([])
   const [hydrated, setHydrated] = useState(false)
@@ -107,12 +123,14 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
       setStep(typeof saved.step === 'number' ? saved.step : 0)
       setQi(typeof saved.qi === 'number' ? saved.qi : 0)
       setPicked(saved.picked !== undefined ? saved.picked : null)
+      setBlankInput(saved.blankInput || '')
       setScore(saved.score || { ok: 0, total: 0 })
       setHistory(Array.isArray(saved.history) ? saved.history : [])
     } else {
       setStep(0)
       setQi(0)
       setPicked(null)
+      setBlankInput('')
       setScore({ ok: 0, total: 0 })
       setHistory([])
     }
@@ -124,8 +142,8 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
   // Persist in-progress exercise so refresh / tab switch does not reset it
   useEffect(() => {
     if (!hydrated) return
-    saveSession(lesson.id, { step, qi, picked, score, history })
-  }, [lesson.id, step, qi, picked, score, history, hydrated])
+    saveSession(lesson.id, { step, qi, picked, blankInput, score, history })
+  }, [lesson.id, step, qi, picked, blankInput, score, history, hydrated])
 
   function startQuiz() {
     setStep(2)
@@ -152,15 +170,37 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     setHistory((h) => {
       const entry = {
         qi,
+        type: current.type || 'mcq',
         q: current.q,
         options: current.options,
+        answers: current.answers,
         answer: current.answer,
         picked: idx,
         explain: current.explain,
         correct,
       }
-      const without = h.filter((x) => x.qi !== qi)
-      return [...without, entry]
+      return [...h.filter((x) => x.qi !== qi), entry]
+    })
+  }
+
+  function answerBlank() {
+    if (picked !== null) return
+    const raw = blankInput
+    if (!String(raw || '').trim()) return
+    const correct = isBlankCorrect(raw, current.answers)
+    setPicked(raw) // store the typed answer
+    setScore((s) => ({ ok: s.ok + (correct ? 1 : 0), total: s.total + 1 }))
+    setHistory((h) => {
+      const entry = {
+        qi,
+        type: 'blank',
+        q: current.q,
+        answers: current.answers,
+        picked: raw,
+        explain: current.explain,
+        correct,
+      }
+      return [...h.filter((x) => x.qi !== qi), entry]
     })
   }
 
@@ -168,10 +208,10 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
     if (qi + 1 < quiz.length) {
       setQi((i) => i + 1)
       setPicked(null)
+      setBlankInput('')
     } else {
       setStep(3)
       onComplete?.(lesson.id)
-      // Keep session so refresh still shows the bilan; clear only on explicit restart / leave
     }
   }
 
@@ -350,7 +390,50 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
             </p>
 
             <div className="mt-5 space-y-2.5">
-              {current.options.map((opt, idx) => {
+              {current.type === 'blank' ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={picked !== null ? String(picked) : blankInput}
+                    onChange={(e) => setBlankInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') answerBlank()
+                    }}
+                    disabled={picked !== null}
+                    placeholder="Écris ta réponse ici…"
+                    className={clsx(
+                      'w-full rounded-2xl border px-4 py-3.5 text-sm outline-none transition-colors sm:text-[15px]',
+                      picked === null && 'border-slate-200 bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900',
+                      picked !== null && isBlankCorrect(picked, current.answers) && 'border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40',
+                      picked !== null && !isBlankCorrect(picked, current.answers) && 'border-red-400 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40',
+                    )}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                  />
+                  {picked === null && (
+                    <button type="button" className="btn-primary w-full sm:w-auto" onClick={answerBlank}>
+                      Valider
+                    </button>
+                  )}
+                  {picked !== null && (
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      {isBlankCorrect(picked, current.answers) ? (
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">Correct.</span>
+                      ) : (
+                        <>
+                          <span className="font-semibold text-red-600 dark:text-red-400">Incorrect.</span>
+                          {' '}Bonne réponse :{' '}
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            {(current.answers || []).join(' / ')}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                (current.options || []).map((opt, idx) => {
+
                 const letters = ['A', 'B', 'C', 'D', 'E']
                 const isPicked = picked === idx
                 const isRight = idx === current.answer
@@ -385,7 +468,8 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
                     {show && isPicked && !isRight && <XCircle size={18} className="shrink-0 text-red-500" />}
                   </button>
                 )
-              })}
+              })
+              )}
             </div>
 
             {current.hint && (
@@ -400,34 +484,21 @@ export default function LessonPlayer({ lesson, completed, onBack, onComplete }) 
                 <ExplanationPanel
                   explain={current.explain}
                   q={current.q}
-                  options={current.options}
-                  answer={current.answer}
-                  picked={picked}
-                  correct={picked === current.answer}
+                  options={current.type === 'blank' ? (current.answers || []) : current.options}
+                  answer={current.type === 'blank' ? 0 : current.answer}
+                  picked={current.type === 'blank' ? (isBlankCorrect(picked, current.answers) ? 0 : -1) : picked}
+                  correct={
+                    current.type === 'blank'
+                      ? isBlankCorrect(picked, current.answers)
+                      : picked === current.answer
+                  }
                 />
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      disabled={qi === 0}
-                      onClick={() => {
-                        if (qi > 0) {
-                          const prevQi = qi - 1
-                          setQi(prevQi)
-                          const prevH = history.find((h) => h.qi === prevQi) || history[prevQi]
-                          setPicked(prevH && typeof prevH.picked === 'number' ? prevH.picked : null)
-                        }
-                      }}
-                    >
-                      ← Précédent
-                    </button>
-                    <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                      Retour
-                    </button>
-                  </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
+                    Retour
+                  </button>
                   <button type="button" className="btn-primary min-w-[5rem]" onClick={nextQuestion}>
-                    {qi + 1 < quiz.length ? 'Suivant →' : 'Bilan'}
+                    {qi + 1 < quiz.length ? 'OK' : 'Bilan'}
                   </button>
                 </div>
               </div>
