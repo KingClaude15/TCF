@@ -70,8 +70,8 @@ function ExplanationPanel({ explain, q, options, answer, picked, correct }) {
               {block.title}
             </p>
           )}
-          <p className="text-slate-800 dark:text-slate-200">
-            <strong className="text-brand-800 dark:text-brand-200">En bref : </strong>
+          <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
+            <strong className="text-brand-800 dark:text-brand-200">Explication : </strong>
             {block.summary}
           </p>
           {!correct && block.correctAnswer && (
