@@ -12,6 +12,7 @@ import { getActiveEvaluation } from '../services/evaluationLockService'
 import { subscribeToNotifications } from '../services/notificationsService'
 import ExamTimer, { clearExamTimer } from '../components/ee/ExamTimer'
 import AudioRecorder from '../components/eo/AudioRecorder'
+import EoInteractiveTache2 from '../components/eo/EoInteractiveTache2'
 import EoFeedbackPanel from '../components/eo/EoFeedbackPanel'
 import { computeSujetBandScore, CEFR_BAND_STYLES } from '../lib/cecrBands'
 
@@ -26,6 +27,8 @@ export default function EOSujetWorkspace() {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(0)
+  /** Tâche 2 only: 'exam' | 'interactive' */
+  const [t2Mode, setT2Mode] = useState('exam')
   const [recordings, setRecordings] = useState({})
   const [existingAudioUrls, setExistingAudioUrls] = useState({})
   const [draftAudioPaths, setDraftAudioPaths] = useState({})
@@ -513,7 +516,36 @@ export default function EOSujetWorkspace() {
         </p>
       </div>
 
-      {feedbacks[step] ? (
+      {task.taskType === 2 && !feedbacks[step] && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setT2Mode('exam')}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              t2Mode === 'exam'
+                ? 'bg-orange-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+          >
+            Mode examen
+          </button>
+          <button
+            type="button"
+            onClick={() => setT2Mode('interactive')}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              t2Mode === 'interactive'
+                ? 'bg-orange-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+          >
+            Mode interactif (voix)
+          </button>
+        </div>
+      )}
+
+      {task.taskType === 2 && t2Mode === 'interactive' && !feedbacks[step] ? (
+        <EoInteractiveTache2 prompt={task.prompt} disabled={submittingAll || !!otherLock} />
+      ) : feedbacks[step] ? (
         <div className="card border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
           Cette tâche a déjà été soumise et évaluée. Utilise "Refaire ce sujet" depuis les résultats pour recommencer.
         </div>
